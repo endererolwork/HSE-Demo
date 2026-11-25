@@ -24,6 +24,9 @@ namespace HSE.Scenario.PrismFX
         [Tooltip("Show outline/glow through walls and other objects for objective targets.")]
         [SerializeField] bool objectivesVisibleThroughWalls = false;
 
+        [Tooltip("For targets with a Canvas (e.g. the PDA), skip overlay/inner glow/reticle so the screen stays readable.")]
+        [SerializeField] bool keepScreensReadable = true;
+
         // Components this service added, and which targets were configured by hand.
         readonly Dictionary<GameObject, PrismHighlight> _highlights = new Dictionary<GameObject, PrismHighlight>();
         readonly HashSet<GameObject> _handConfigured = new HashSet<GameObject>();
@@ -36,10 +39,21 @@ namespace HSE.Scenario.PrismFX
             {
                 h.ApplyPreset(PresetFor(style));
                 if (style == HighlightStyle.Objective && objectivesVisibleThroughWalls)
-                {
                     h.settings.outlineVisibility = PrismVisibility.AlwaysOnTop;
-                    h.Refresh();
+                else
+                    // See-through also fires on an object's own hidden parts (a device's body behind its
+                    // screen glass), which tints the whole object. Keep it for explicit "through walls" only.
+                    h.settings.seeThroughMode = PrismSeeThroughMode.Never;
+                if (keepScreensReadable && target.GetComponentInChildren<Canvas>(true))
+                {
+                    // Devices with a UI (PDA, terminals): only outline + glow, nothing drawn over the screen.
+                    h.settings.overlay = 0f;
+                    h.settings.innerGlow = 0f;
+                    h.settings.target = false;
+                    h.settings.touchGlow = false;
+                    h.settings.hologram = false;
                 }
+                h.Refresh();
             }
             h.highlighted = true;
         }

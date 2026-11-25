@@ -6,7 +6,7 @@ A small task/step framework for VR training scenarios. A scenario is a list of s
 Assets/HSE/Scenario/
   Core/      HSE.Scenario           runner, step base, composite, signals, report   (no dependencies)
   PrismFX/   HSE.Scenario.PrismFX   IHighlightService adapter for PrismFX           (Core + PrismFX)
-  Tests/     HSE.Scenario.Tests     EditMode tests for the runner and scoring
+  Tests/     HSE.Scenario.Tests     PlayMode tests for the runner and scoring
 Assets/HSE/Scripts/Training/
   Steps/     game-specific steps (grab, interact, reach location, scan wristband, confirm identity, lab order)
   UI/        wrist checklist panel
@@ -90,4 +90,4 @@ Other patterns: Observer (runner events, `ScenarioSignal`), Composite (`Composit
 
 ## Tests
 
-Open Window → General → Test Runner → EditMode and run HSE.Scenario.Tests. The tests cover ordering, highlights following the active step, optional steps, mistakes and scoring, composites, timing, skip and restart.
+Open Window → General → Test Runner → PlayMode and run HSE.Scenario.Tests (the test steps are MonoBehaviours, so the assembly is a runtime test assembly). The tests cover ordering, highlights following the active step, optional steps, mistakes and scoring, composites, timing, skip and restart.

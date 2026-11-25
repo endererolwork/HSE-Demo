@@ -47,8 +47,9 @@ namespace HSE.Devices
         public PatientRecord CurrentPatient => _patient;
         public bool IdentityConfirmed => _identityConfirmed;
 
-        void Start()
+        void Awake()
         {
+            // Built in Awake so highlight services see the screen canvas before any Start runs.
             BuildCanvas();
             ShowHome(null);
         }
@@ -101,8 +102,9 @@ namespace HSE.Devices
             var infoCol = Column(info, 20, 4);
             Row(infoCol, "Protokol No", p.medicalRecordNumber);
             Row(infoCol, "Doğum Tarihi", p.dateOfBirth);
-            Row(infoCol, "Servis / Oda", $"{p.ward} · Oda {p.room} · Yatak {p.bed}");
-            Row(infoCol, "Tanı", p.diagnosis);
+            Row(infoCol, "Servis", p.ward);
+            Row(infoCol, "Oda / Yatak", $"{p.room} / {p.bed}");
+            Row(infoCol, "Tanı", p.diagnosis, 84);
             Row(infoCol, "Sorumlu Hekim", p.attendingPhysician);
 
             var allergy = Box(col, RedLight, 64);
@@ -353,7 +355,7 @@ namespace HSE.Devices
             var tick = Box(box, Blue, 0);
             Fill(tick); tick.offsetMin = new Vector2(7, 7); tick.offsetMax = new Vector2(-7, -7);
 
-            var label = Label(row, $"{t.Name}\n<size=70%><color=#6B7685>{t.Detail}</color></size>", 27, Ink, TextAlignmentOptions.Left, false);
+            var label = Label(row, t.Name, 28, Ink, TextAlignmentOptions.Left, false);
             label.GetComponent<LayoutElement>().flexibleWidth = 1;
             Dot(row, t.ContainerColor, 26);
 
@@ -374,9 +376,9 @@ namespace HSE.Devices
             Refresh();
         }
 
-        void Row(RectTransform parent, string label, string value)
+        void Row(RectTransform parent, string label, string value, float height = 50)
         {
-            var r = HRow(parent, 50, 12);
+            var r = HRow(parent, height, 12);
             Label(r, label, 26, Muted, TextAlignmentOptions.Left, false).GetComponent<LayoutElement>().preferredWidth = 210;
             Label(r, value, 28, Ink, TextAlignmentOptions.Left, true).GetComponent<LayoutElement>().flexibleWidth = 1;
         }

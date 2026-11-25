@@ -55,21 +55,35 @@ namespace HSE.Training.UI
             runner.ScenarioCompleted -= OnFinished;
         }
 
+        float _nextSearch;
+        bool _attached;
+
         void Start()
         {
-            if (!attachTo) attachTo = FindController();
-            if (attachTo)
-            {
-                transform.SetParent(attachTo, false);
-                transform.localPosition = attachOffset;
-                transform.localRotation = Quaternion.Euler(attachEuler);
-            }
+            TryAttach();
             if (runner && runner.IsRunning) Redraw();
+        }
+
+        // Controllers can be switched on a little after the scene starts (input modality manager), so keep looking.
+        void TryAttach()
+        {
+            if (_attached) return;
+            if (!attachTo) attachTo = FindController();
+            if (!attachTo) return;
+            transform.SetParent(attachTo, false);
+            transform.localPosition = attachOffset;
+            transform.localRotation = Quaternion.Euler(attachEuler);
+            _attached = true;
         }
 
         void Update()
         {
-            if (_toast && _toast.text.Length > 0 && Time.time > _toastUntil) _toast.text = "";
+            if (!_attached && Time.time >= _nextSearch)
+            {
+                _nextSearch = Time.time + 1f;
+                TryAttach();
+            }
+            if (_toast && !string.IsNullOrEmpty(_toast.text) && Time.time > _toastUntil) _toast.text = "";
         }
 
         // ------------------------------------------------------------ runner events
@@ -219,7 +233,7 @@ namespace HSE.Training.UI
 
         static Transform FindController()
         {
-            var all = FindObjectsByType<Transform>(FindObjectsInactive.Exclude, FindObjectsSortMode.None);
+            var all = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             foreach (var n in ControllerNames)
             {
                 var t = all.FirstOrDefault(x => x.name == n);
