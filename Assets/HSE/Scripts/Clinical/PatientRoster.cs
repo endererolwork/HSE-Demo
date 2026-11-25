@@ -75,7 +75,10 @@ namespace HSE.Clinical
             return null;
         }
 
-        static readonly MaterialPropertyBlock Block = new MaterialPropertyBlock();
+        // Created on first use: Unity objects must not be constructed in a static/field initializer,
+        // which runs when the component is added.
+        static MaterialPropertyBlock _block;
+        static MaterialPropertyBlock Block => _block ??= new MaterialPropertyBlock();
         static readonly int BaseColor = Shader.PropertyToID("_BaseColor");
 
         static void Tint(Renderer r, Color c)
