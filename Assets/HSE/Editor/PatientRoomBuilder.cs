@@ -72,6 +72,7 @@ namespace HSE.EditorTools
             BuildPlayer();
 
             MarkStatic(env);
+            PdaBuilder.SetupInScene();
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddSceneToBuildSettings(ScenePath);
