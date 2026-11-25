@@ -1,0 +1,22 @@
+using HSE.Clinical;
+using HSE.Scenario;
+using UnityEngine;
+
+namespace HSE.Training.Steps
+{
+    /// <summary>Press "Kimliği Doğrula" on the PDA for the right patient.</summary>
+    public class ConfirmIdentityStep : ClinicalEventStep
+    {
+        protected override void Subscribe(bool on)
+        {
+            if (on) ClinicalEvents.IdentityConfirmed += OnConfirmed;
+            else ClinicalEvents.IdentityConfirmed -= OnConfirmed;
+        }
+
+        void OnConfirmed(PatientRecord p)
+        {
+            if (IsExpected(p)) Complete();
+            else ReportMistake("Yanlış hastanın kimliği doğrulandı.");
+        }
+    }
+}

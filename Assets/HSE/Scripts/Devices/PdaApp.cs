@@ -172,7 +172,12 @@ namespace HSE.Devices
             MakeButton(nav, "İstemi Gönder", Blue, Color.white, 96, () =>
             {
                 var problem = Validate();
-                if (problem != null) { warning.text = problem; return; }
+                if (problem != null)
+                {
+                    warning.text = problem;
+                    ClinicalEvents.RaiseLabOrderRejected(problem.Replace("\n", " "));
+                    return;
+                }
                 Submit();
             });
         }
