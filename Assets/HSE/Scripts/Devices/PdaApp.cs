@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using HSE.Clinical;
+using HSE.Localization;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -33,6 +34,7 @@ namespace HSE.Devices
         static readonly Color RedLight = Hex("FDECEC");
         static readonly Color Amber = Hex("E8920C");
 
+        Action _redraw;
         PatientRecord _patient;
         bool _identityConfirmed;
         bool _urgent;
@@ -54,6 +56,17 @@ namespace HSE.Devices
             ShowHome(null);
         }
 
+        void OnEnable() => Loc.Changed += OnLanguageChanged;
+        void OnDisable() => Loc.Changed -= OnLanguageChanged;
+
+        /// <summary>Rebuilds the UI in the new language and shows the same screen again.</summary>
+        void OnLanguageChanged()
+        {
+            if (_canvas) Destroy(_canvas.gameObject);
+            BuildCanvas();
+            (_redraw ?? (() => ShowHome(null)))();
+        }
+
         void Update()
         {
             if (_clock) _clock.text = DateTime.Now.ToString("HH:mm");
@@ -65,7 +78,7 @@ namespace HSE.Devices
         {
             if (code.kind != CodeKind.PatientWristband || code.patient == null)
             {
-                ShowHome("<color=#" + ColorUtility.ToHtmlStringRGB(Amber) + ">Okunan kod bir hasta bilekliği değil.</color>");
+                ShowHome("<color=#" + ColorUtility.ToHtmlStringRGB(Amber) + ">" + Loc.T("pda.scan.notWristband") + "</color>");
                 return;
             }
             if (_patient != code.patient)
@@ -82,39 +95,41 @@ namespace HSE.Devices
 
         void ShowHome(string status)
         {
-            SetScreen(_home, "Hasta Okut");
-            _homeStatus.text = status ?? (_patient != null ? "Son okunan hasta: <b>" + _patient.fullName + "</b>" : "");
+            _redraw = () => ShowHome(status);
+            SetScreen(_home, Loc.T("pda.title.scan"));
+            _homeStatus.text = status ?? (_patient != null ? Loc.F("pda.scan.last", _patient.fullName) : "");
         }
 
         void ShowPatient()
         {
             Clear(_patientScreen);
-            SetScreen(_patientScreen, "Hasta Bilgileri");
+            _redraw = ShowPatient;
+            SetScreen(_patientScreen, Loc.T("pda.title.patient"));
             var p = _patient;
             var col = Column(_patientScreen, 24, 18);
 
             var card = CardBox(col, 0);
             var cardCol = Column(card, 24, 6);
             Label(cardCol, p.fullName, 52, Ink, TextAlignmentOptions.Left, true, 64);
-            Label(cardCol, $"{p.Age} yaş  ·  {p.gender}  ·  Kan grubu {p.bloodType}", 30, Muted, TextAlignmentOptions.Left, false, 40);
+            Label(cardCol, Loc.F("pda.age", p.Age, p.Gender, p.bloodType), 30, Muted, TextAlignmentOptions.Left, false, 40);
 
             var info = CardBox(col, 0);
             var infoCol = Column(info, 20, 4);
-            Row(infoCol, "Protokol No", p.medicalRecordNumber);
-            Row(infoCol, "Doğum Tarihi", p.dateOfBirth);
-            Row(infoCol, "Servis", p.ward);
-            Row(infoCol, "Oda / Yatak", $"{p.room} / {p.bed}");
-            Row(infoCol, "Tanı", p.diagnosis, 84);
-            Row(infoCol, "Sorumlu Hekim", p.attendingPhysician);
+            Row(infoCol, Loc.T("pda.mrn"), p.medicalRecordNumber);
+            Row(infoCol, Loc.T("pda.dob"), p.dateOfBirth);
+            Row(infoCol, Loc.T("pda.ward"), p.Ward);
+            Row(infoCol, Loc.T("pda.roomBed"), $"{p.room} / {p.bed}");
+            Row(infoCol, Loc.T("pda.diagnosis"), p.Diagnosis, 84);
+            Row(infoCol, Loc.T("pda.physician"), p.attendingPhysician);
 
             var allergy = Box(col, RedLight, 64);
-            Label(allergy, "ALERJİ:  " + p.allergies, 32, Red, TextAlignmentOptions.Center, true);
+            Label(allergy, Loc.T("pda.allergy") + "  " + p.Allergies, 32, Red, TextAlignmentOptions.Center, true);
 
             var plan = CardBox(col, 0);
             var planCol = Column(plan, 20, 6);
-            Label(planCol, "BAKIM PLANI", 24, Muted, TextAlignmentOptions.Left, true, 30);
-            Label(planCol, p.carePlan, 28, Ink, TextAlignmentOptions.Left, false, 76);
-            Label(planCol, "HEKİM İSTEMİ", 24, Muted, TextAlignmentOptions.Left, true, 30);
+            Label(planCol, Loc.T("pda.carePlan"), 24, Muted, TextAlignmentOptions.Left, true, 30);
+            Label(planCol, p.CarePlan, 28, Ink, TextAlignmentOptions.Left, false, 76);
+            Label(planCol, Loc.T("pda.physicianOrder"), 24, Muted, TextAlignmentOptions.Left, true, 30);
             var ordered = string.Join(", ", p.physicianOrderedTestIds.Select(id => LabTestCatalog.Get(id)?.Name ?? id));
             Label(planCol, ordered, 28, Ink, TextAlignmentOptions.Left, false, 76);
 
@@ -122,11 +137,11 @@ namespace HSE.Devices
             if (_identityConfirmed)
             {
                 var done = Box(col, BlueLight, 70);
-                Label(done, "Kimlik doğrulandı", 32, Green, TextAlignmentOptions.Center, true);
+                Label(done, Loc.T("pda.identityConfirmed"), 32, Green, TextAlignmentOptions.Center, true);
             }
             else
             {
-                MakeButton(col, "Kimliği Doğrula", Green, Color.white, 96, () =>
+                MakeButton(col, Loc.T("pda.confirmIdentity"), Green, Color.white, 96, () =>
                 {
                     _identityConfirmed = true;
                     ClinicalEvents.RaiseIdentityConfirmed(_patient);
@@ -134,15 +149,16 @@ namespace HSE.Devices
                 });
             }
             var nav = HRow(col, 96, 16);
-            MakeButton(nav, "Ana Ekran", Line, Ink, 96, () => ShowHome(null));
-            var order = MakeButton(nav, "Tahlil İstemi", Blue, Color.white, 96, ShowOrder);
+            MakeButton(nav, Loc.T("pda.home"), Line, Ink, 96, () => ShowHome(null));
+            var order = MakeButton(nav, Loc.T("pda.labRequest"), Blue, Color.white, 96, ShowOrder);
             order.interactable = _identityConfirmed;
         }
 
         void ShowOrder()
         {
             Clear(_orderScreen);
-            SetScreen(_orderScreen, "Laboratuvar İstemi");
+            _redraw = ShowOrder;
+            SetScreen(_orderScreen, Loc.T("pda.title.order"));
             var col = Column(_orderScreen, 20, 8);
             Label(col, $"{_patient.fullName}  ·  {_patient.medicalRecordNumber}", 28, Muted, TextAlignmentOptions.Left, false, 40);
 
@@ -156,22 +172,22 @@ namespace HSE.Devices
             }
 
             var seg = HRow(col, 78, 12);
-            Label(seg, "Öncelik", 30, Ink, TextAlignmentOptions.Left, true).GetComponent<LayoutElement>().preferredWidth = 150;
+            Label(seg, Loc.T("pda.priority"), 30, Ink, TextAlignmentOptions.Left, true).GetComponent<LayoutElement>().preferredWidth = 150;
             Button routine = null, urgent = null;
             void Paint()
             {
                 PaintButton(routine, !_urgent ? Blue : Line, !_urgent ? Color.white : Ink);
                 PaintButton(urgent, _urgent ? Red : Line, _urgent ? Color.white : Ink);
             }
-            routine = MakeButton(seg, "Rutin", Line, Ink, 70, () => { _urgent = false; Paint(); });
-            urgent = MakeButton(seg, "ACİL", Line, Ink, 70, () => { _urgent = true; Paint(); });
+            routine = MakeButton(seg, Loc.T("pda.routine"), Line, Ink, 70, () => { _urgent = false; Paint(); });
+            urgent = MakeButton(seg, Loc.T("pda.urgent"), Line, Ink, 70, () => { _urgent = true; Paint(); });
             Paint();
 
             warning = Label(col, "", 26, Red, TextAlignmentOptions.Center, true, 70);
 
             var nav = HRow(col, 96, 16);
-            MakeButton(nav, "Geri", Line, Ink, 96, ShowPatient);
-            MakeButton(nav, "İstemi Gönder", Blue, Color.white, 96, () =>
+            MakeButton(nav, Loc.T("pda.back"), Line, Ink, 96, ShowPatient);
+            MakeButton(nav, Loc.T("pda.send"), Blue, Color.white, 96, () =>
             {
                 var problem = Validate();
                 if (problem != null)
@@ -187,7 +203,8 @@ namespace HSE.Devices
         void ShowConfirm()
         {
             Clear(_confirmScreen);
-            SetScreen(_confirmScreen, "İstem Gönderildi");
+            _redraw = ShowConfirm;
+            SetScreen(_confirmScreen, Loc.T("pda.title.sent"));
             var col = Column(_confirmScreen, 28, 14);
 
             var badgeRow = HRow(col, 150, 0);
@@ -199,12 +216,12 @@ namespace HSE.Devices
             circle.sizeDelta = new Vector2(140, 140);
             Check(circle);
 
-            Label(col, "İstem laboratuvara iletildi", 40, Ink, TextAlignmentOptions.Center, true, 56);
+            Label(col, Loc.T("pda.sent.headline"), 40, Ink, TextAlignmentOptions.Center, true, 56);
             var refBox = Box(col, BlueLight, 110);
             var refCol = Column(refBox, 10, 0);
-            Label(refCol, "Referans No", 24, Muted, TextAlignmentOptions.Center, false, 32);
+            Label(refCol, Loc.T("pda.sent.ref"), 24, Muted, TextAlignmentOptions.Center, false, 32);
             Label(refCol, _lastOrder.Reference, 44, Navy, TextAlignmentOptions.Center, true, 56);
-            Label(col, $"{_lastOrder.Time:dd.MM.yyyy HH:mm}  ·  {(_lastOrder.Urgent ? "<color=#D23B3B><b>ACİL</b></color>" : "Rutin")}", 28, Muted, TextAlignmentOptions.Center, false, 40);
+            Label(col, $"{_lastOrder.Time:dd.MM.yyyy HH:mm}  ·  {(_lastOrder.Urgent ? "<color=#D23B3B><b>" + Loc.T("pda.urgent") + "</b></color>" : Loc.T("pda.routine"))}", 28, Muted, TextAlignmentOptions.Center, false, 40);
 
             var list = CardBox(col, 0);
             var listCol = Column(list, 18, 4);
@@ -215,23 +232,23 @@ namespace HSE.Devices
                 var name = Label(r, $"{t.Name}  <color=#6B7685><size=80%>{t.Container}</size></color>", 26, Ink, TextAlignmentOptions.Left, false);
                 name.GetComponent<LayoutElement>().flexibleWidth = 1;
             }
-            Label(col, "Sonraki adım: numune tüplerini hazırlayın ve etiketleyin.", 26, Muted, TextAlignmentOptions.Center, false, 70);
+            Label(col, Loc.T("pda.sent.next"), 26, Muted, TextAlignmentOptions.Center, false, 70);
             Spacer(col);
-            MakeButton(col, "Ana Ekran", Blue, Color.white, 96, () => ShowHome(null));
+            MakeButton(col, Loc.T("pda.home"), Blue, Color.white, 96, () => ShowHome(null));
         }
 
         // ------------------------------------------------------------ order logic
 
         string Validate()
         {
-            if (_selected.Count == 0) return "En az bir tahlil seçin.";
+            if (_selected.Count == 0) return Loc.T("pda.selectOne");
             var ordered = new HashSet<string>(_patient.physicianOrderedTestIds);
             var missing = ordered.Where(id => !_selected.Contains(id)).Select(id => LabTestCatalog.Get(id)?.Name ?? id).ToList();
             var extra = _selected.Where(id => !ordered.Contains(id)).Select(id => LabTestCatalog.Get(id)?.Name ?? id).ToList();
             if (missing.Count == 0 && extra.Count == 0) return null;
-            var msg = "Hekim istemiyle uyuşmuyor.";
-            if (missing.Count > 0) msg += "\nEksik: " + string.Join(", ", missing);
-            if (extra.Count > 0) msg += "\nFazla: " + string.Join(", ", extra);
+            var msg = Loc.T("pda.mismatch");
+            if (missing.Count > 0) msg += "\n" + Loc.T("pda.missing") + ": " + string.Join(", ", missing);
+            if (extra.Count > 0) msg += "\n" + Loc.T("pda.extra") + ": " + string.Join(", ", extra);
             return msg;
         }
 
@@ -278,7 +295,7 @@ namespace HSE.Devices
             Dock(status, true, 0, 56);
             _clock = Label(status, "", 26, Color.white, TextAlignmentOptions.Left, true);
             Pad(_clock.rectTransform, 24, 0);
-            var brand = Label(status, "HSE Klinik  ·  Wi-Fi  ·  %86", 22, new Color(1, 1, 1, 0.8f), TextAlignmentOptions.Right, false);
+            var brand = Label(status, Loc.T("pda.status"), 22, new Color(1, 1, 1, 0.8f), TextAlignmentOptions.Right, false);
             Pad(brand.rectTransform, 24, 0);
 
             var header = Box(_canvas, Blue, 0);
@@ -307,8 +324,8 @@ namespace HSE.Devices
             holder.SetParent(frameRow, false);
             holder.GetComponent<LayoutElement>().preferredHeight = 300;
             ScanFrame(holder);
-            Label(col, "Hasta bilekliğini okutun", 46, Ink, TextAlignmentOptions.Center, true, 70);
-            Label(col, "Tetiği basılı tutun ve kırmızı ışını bileklikteki QR koda tutun.", 30, Muted, TextAlignmentOptions.Center, false, 90);
+            Label(col, Loc.T("pda.scan.headline"), 46, Ink, TextAlignmentOptions.Center, true, 70);
+            Label(col, Loc.T("pda.scan.help"), 30, Muted, TextAlignmentOptions.Center, false, 90);
             _homeStatus = Label(col, "", 28, Ink, TextAlignmentOptions.Center, false, 80);
             Spacer(col);
         }

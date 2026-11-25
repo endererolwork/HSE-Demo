@@ -75,7 +75,7 @@ Other patterns: Observer (runner events, `ScenarioSignal`), Composite (`Composit
 
 ## The training scenario in this project
 
-`HSE > Setup Scenario` builds "Kan Alma ve Laboratuvar İstemi" in the patient room:
+`HSE > Setup Scenario` builds "Blood Collection and Lab Request" in the patient room. It starts when the trainee picks English or Turkish on the panel at the entrance. A bobbing arrow with a short prompt sits above the current target, and a direction arrow appears in front of the trainee while the target is out of view (`ScenarioGuide`). Step text is localised through `HSE.Localization.Loc` with keys `step.<id>.title|instr|cue`; the step's own fields are the English fallback.
 
 | # | Step | Type | Highlight |
 |---|---|---|---|

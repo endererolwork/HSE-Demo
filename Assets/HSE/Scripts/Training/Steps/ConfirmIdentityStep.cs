@@ -1,10 +1,11 @@
 using HSE.Clinical;
+using HSE.Localization;
 using HSE.Scenario;
 using UnityEngine;
 
 namespace HSE.Training.Steps
 {
-    /// <summary>Press "Kimliği Doğrula" on the PDA for the right patient.</summary>
+    /// <summary>Press "Confirm Identity" on the PDA for the right patient.</summary>
     public class ConfirmIdentityStep : ClinicalEventStep
     {
         protected override void Subscribe(bool on)
@@ -16,7 +17,7 @@ namespace HSE.Training.Steps
         void OnConfirmed(PatientRecord p)
         {
             if (IsExpected(p)) Complete();
-            else ReportMistake("Yanlış hastanın kimliği doğrulandı.");
+            else ReportMistake(Loc.T("mistake.wrongIdentity"));
         }
     }
 }

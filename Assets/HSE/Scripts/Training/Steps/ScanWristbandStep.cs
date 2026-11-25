@@ -1,4 +1,5 @@
 using HSE.Clinical;
+using HSE.Localization;
 using HSE.Scenario;
 using UnityEngine;
 
@@ -15,8 +16,8 @@ namespace HSE.Training.Steps
 
         void OnScanned(ScannableCode code)
         {
-            if (code.kind != CodeKind.PatientWristband) ReportMistake("Okunan kod hasta bilekliği değil.");
-            else if (!IsExpected(code.patient)) ReportMistake("Yanlış hasta! Bileklik bu hastaya ait değil.");
+            if (code.kind != CodeKind.PatientWristband) ReportMistake(Loc.T("mistake.notWristband"));
+            else if (!IsExpected(code.patient)) ReportMistake(Loc.T("mistake.wrongPatient"));
             else Complete();
         }
     }

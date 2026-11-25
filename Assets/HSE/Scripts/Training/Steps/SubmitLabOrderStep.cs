@@ -1,4 +1,5 @@
 using HSE.Clinical;
+using HSE.Localization;
 using HSE.Scenario;
 using UnityEngine;
 
@@ -24,7 +25,7 @@ namespace HSE.Training.Steps
         void OnSubmitted(LabOrder order)
         {
             if (IsExpected(order.Patient)) Complete();
-            else ReportMistake("İstem yanlış hasta için gönderildi.");
+            else ReportMistake(Loc.T("mistake.orderWrongPatient"));
         }
 
         void OnRejected(string reason) => ReportMistake(reason);

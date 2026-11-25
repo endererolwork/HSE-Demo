@@ -11,7 +11,7 @@ namespace HSE.Scenario
     {
         [SerializeField] ScenarioSignal completeOn;
         [SerializeField] ScenarioSignal[] mistakeOn = Array.Empty<ScenarioSignal>();
-        [SerializeField] string mistakeMessage = "Yanlış işlem.";
+        [SerializeField] string mistakeMessage = "Wrong action.";
 
         public void SetSignals(ScenarioSignal complete, string mistakeText = null, params ScenarioSignal[] mistakes)
         {

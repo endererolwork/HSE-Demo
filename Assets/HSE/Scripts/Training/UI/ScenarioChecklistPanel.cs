@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using HSE.Localization;
 using HSE.Scenario;
 using TMPro;
 using UnityEngine;
@@ -43,6 +44,7 @@ namespace HSE.Training.UI
             runner.StepCompleted += OnChanged;
             runner.MistakeMade += OnMistake;
             runner.ScenarioCompleted += OnFinished;
+            Loc.Changed += Redraw;
         }
 
         void OnDisable()
@@ -53,6 +55,7 @@ namespace HSE.Training.UI
             runner.StepCompleted -= OnChanged;
             runner.MistakeMade -= OnMistake;
             runner.ScenarioCompleted -= OnFinished;
+            Loc.Changed -= Redraw;
         }
 
         float _nextSearch;
@@ -93,40 +96,45 @@ namespace HSE.Training.UI
 
         void OnMistake(ScenarioStep step, string message)
         {
-            _toast.text = "<b>Hata:</b> " + message;
+            _toast.text = $"<b>{Loc.T("checklist.mistake")}</b> {message}";
             _toastUntil = Time.time + mistakeShowSeconds;
         }
 
         void OnFinished(ScenarioReport report)
         {
             var t = report.TotalTime;
-            _header.text = $"<b>{runner.Title}</b>  ·  Tamamlandı";
-            _instruction.text = "Senaryo bitti. Sonuçlar:";
+            _finished = report;
+            _header.text = $"<b>{ScenarioTitle}</b>  ·  {Loc.T("checklist.done")}";
+            _instruction.text = Loc.T("checklist.results");
             _list.text =
-                $"Puan: <b>{report.Score} / {report.MaxScore}</b>\n" +
-                $"Hata sayısı: <b>{report.MistakeCount}</b>\n" +
-                $"Süre: <b>{(int)(t / 60):00}:{(int)(t % 60):00}</b>\n" +
-                $"Ek görevler: <b>{report.CompletedCount(StepRequirement.Optional)} / {report.Count(StepRequirement.Optional)}</b>";
+                $"{Loc.T("checklist.score")}: <b>{report.Score} / {report.MaxScore}</b>\n" +
+                $"{Loc.T("checklist.mistakes")}: <b>{report.MistakeCount}</b>\n" +
+                $"{Loc.T("checklist.time")}: <b>{(int)(t / 60):00}:{(int)(t % 60):00}</b>\n" +
+                $"{Loc.T("checklist.extrasDone")}: <b>{report.CompletedCount(StepRequirement.Optional)} / {report.Count(StepRequirement.Optional)}</b>";
         }
 
         // ------------------------------------------------------------ drawing
 
+        ScenarioReport _finished;
+        string ScenarioTitle => runner ? Loc.TOr("scenario.title", runner.Title) : "";
+
         void Redraw()
         {
             if (!runner || runner.Report == null) return;
+            if (_finished != null && _finished == runner.Report) { OnFinished(_finished); return; }
             var mandatory = runner.MandatorySteps.ToList();
             int done = mandatory.Count(s => s.State == StepState.Completed || s.State == StepState.Skipped);
-            _header.text = $"<b>{runner.Title}</b>  ·  {done}/{mandatory.Count}";
+            _header.text = $"<b>{ScenarioTitle}</b>  ·  {done}/{mandatory.Count}";
 
             var current = runner.CurrentStep;
-            _instruction.text = current ? $"<b>{current.Title}</b>\n<size=80%>{current.Instruction}</size>" : "";
+            _instruction.text = current ? $"<b>{StepText.Title(current)}</b>\n<size=80%>{StepText.Instruction(current)}</size>" : "";
 
             var sb = new StringBuilder();
             for (int i = 0; i < mandatory.Count; i++) AppendLine(sb, mandatory[i], (i + 1) + ".");
             var optional = runner.OptionalSteps.ToList();
             if (optional.Count > 0)
             {
-                sb.Append("\n<size=85%><color=#8A96A8>EK GÖREVLER</color></size>\n");
+                sb.Append($"\n<size=85%><color=#8A96A8>{Loc.T("checklist.extras")}</color></size>\n");
                 foreach (var s in optional) AppendLine(sb, s, "+");
             }
             _list.text = sb.ToString();
@@ -137,19 +145,19 @@ namespace HSE.Training.UI
             switch (s.State)
             {
                 case StepState.Completed:
-                    sb.Append($"<color=#4CAF6A>{prefix} <s>{s.Title}</s></color>\n"); break;
+                    sb.Append($"<color=#4CAF6A>{prefix} <s>{StepText.Title(s)}</s></color>\n"); break;
                 case StepState.Skipped:
-                    sb.Append($"<color=#B0B7C3>{prefix} <s>{s.Title}</s> (atlandı)</color>\n"); break;
+                    sb.Append($"<color=#B0B7C3>{prefix} <s>{StepText.Title(s)}</s> ({Loc.T("checklist.skipped")})</color>\n"); break;
                 case StepState.Active when s.Requirement == StepRequirement.Mandatory:
-                    sb.Append($"<color=#3D8BFF><b>{prefix} {s.Title}</b></color>\n"); break;
+                    sb.Append($"<color=#3D8BFF><b>{prefix} {StepText.Title(s)}</b></color>\n"); break;
                 default:
-                    sb.Append($"<color=#C9CFD8>{prefix} {s.Title}</color>\n"); break;
+                    sb.Append($"<color=#C9CFD8>{prefix} {StepText.Title(s)}</color>\n"); break;
             }
             if (s is CompositeStep c && s.State == StepState.Active)
                 foreach (var child in c.Children)
                     sb.Append(child.State == StepState.Completed
-                        ? $"<size=85%><color=#4CAF6A>    <s>{child.Title}</s></color></size>\n"
-                        : $"<size=85%><color=#DDE3EA>    {child.Title}</color></size>\n");
+                        ? $"<size=85%><color=#4CAF6A>    <s>{StepText.Title(child)}</s></color></size>\n"
+                        : $"<size=85%><color=#DDE3EA>    {StepText.Title(child)}</color></size>\n");
         }
 
         void BuildCanvas()
