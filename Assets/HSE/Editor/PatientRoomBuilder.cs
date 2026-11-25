@@ -59,6 +59,7 @@ namespace HSE.EditorTools
             BuildSinkStation(Group("HandHygieneStation", furniture, new Vector3(-RoomW / 2, 0, -0.9f), -90).transform);
             BuildWhiteboard(Group("CareBoard", furniture, new Vector3(0.6f, 0, -RoomD / 2), 180).transform);
             BuildClock(Group("WallClock", furniture, new Vector3(-RoomW / 2, 0, 0f), -90).transform);
+            BuildWheelchair(Group("Wheelchair", furniture, new Vector3(1.1f, 0, -1.9f), 200).transform);
 
             var equipment = Group("Equipment", null, Vector3.zero).transform;
             BuildVitalsMonitor(Group("VitalsMonitorMount", equipment, new Vector3(-0.95f, 0, RoomD / 2), 0).transform);
@@ -200,6 +201,32 @@ namespace HSE.EditorTools
         {
             bed = Group("HospitalBed", parent, new Vector3(BedX, 0, BedZ));
             var t = bed.transform;
+
+            if (ModelLibrary.Exists(ModelLibrary.Bed))
+            {
+                // Blender model (Tools/Blender/make_bed.py) with the same layout as the primitive bed below.
+                var model = ModelLibrary.Place(ModelLibrary.Bed, t, M, "Model");
+                headPivot = Group("HeadSection", t, new Vector3(0, 0.5f, 0.3f));
+                headPivot.transform.localRotation = Quaternion.Euler(-20, 0, 0);
+
+                // Drop the head rail on the nurse's (west, -X) side so the patient's right arm is reachable.
+                foreach (var side in new[] { "A", "B" })
+                {
+                    var rail = ModelLibrary.FindPart(model, "SideRail_Head_" + side);
+                    var arm = ModelLibrary.FindPart(model, "SideRail_Head_" + side + "_Arm");
+                    if (rail && rail.position.x < t.position.x)
+                    {
+                        rail.position += Vector3.down * 0.33f;
+                        if (arm) arm.position += Vector3.down * 0.18f;
+                    }
+                }
+
+                var col = Group("Colliders", t, Vector3.zero).transform;
+                Box("Deck", col, new Vector3(0, 0.45f, 0), new Vector3(0.96f, 0.3f, 2.04f), M("PlasticGray")).GetComponent<MeshRenderer>().enabled = false;
+                Box("Headboard", col, new Vector3(0, 0.75f, 1.075f), new Vector3(1.0f, 0.58f, 0.05f), M("PlasticGray")).GetComponent<MeshRenderer>().enabled = false;
+                Box("Footboard", col, new Vector3(0, 0.65f, -1.075f), new Vector3(1.0f, 0.44f, 0.05f), M("PlasticGray")).GetComponent<MeshRenderer>().enabled = false;
+                return;
+            }
             Box("UnderFrame", t, new Vector3(0, 0.12f, 0), new Vector3(0.7f, 0.08f, 1.6f), M("DarkMetal"));
             Box("Column_Head", t, new Vector3(0, 0.25f, 0.55f), new Vector3(0.2f, 0.25f, 0.2f), M("PlasticWhite"));
             Box("Column_Foot", t, new Vector3(0, 0.25f, -0.55f), new Vector3(0.2f, 0.25f, 0.2f), M("PlasticWhite"));
@@ -244,6 +271,7 @@ namespace HSE.EditorTools
 
         static void BuildNurseStool(Transform t)
         {
+            if (UseModel(t, "Furniture/NurseStool", (new Vector3(0, 0.3f, 0), new Vector3(0.5f, 0.6f, 0.5f)))) return;
             Star(t, 0.06f, 5, 0.28f, M("DarkMetal"));
             Cyl("GasLift", t, new Vector3(0, 0.28f, 0), 0.05f, 0.38f, M("Metal"));
             Box("Mechanism", t, new Vector3(0, 0.47f, 0), new Vector3(0.16f, 0.04f, 0.16f), M("DarkMetal"));
@@ -255,6 +283,7 @@ namespace HSE.EditorTools
 
         static void BuildArmchair(Transform t)
         {
+            if (UseModel(t, "Furniture/VisitorArmchair", (new Vector3(0, 0.45f, -0.02f), new Vector3(0.76f, 0.9f, 0.66f)))) return;
             foreach (var sx in new[] { -1, 1 })
             foreach (var sz in new[] { -1, 1 })
                 Cyl("Leg", t, new Vector3(sx * 0.28f, 0.12f, sz * 0.24f), 0.04f, 0.24f, M("WoodLight"));
@@ -270,6 +299,13 @@ namespace HSE.EditorTools
 
         static void BuildBedsideCabinet(Transform t)
         {
+            if (UseModel(t, "Furniture/BedsideCabinet", (new Vector3(0, 0.38f, 0), new Vector3(0.48f, 0.76f, 0.48f))))
+            {
+                Cyl("Cup", t, new Vector3(-0.08f, 0.815f, -0.1f), 0.07f, 0.1f, M("PlasticWhite"));
+                Cyl("WaterJug", t, new Vector3(0.1f, 0.865f, 0.1f), 0.1f, 0.2f, M("Glass"));
+                Box("TissueBox", t, new Vector3(0.05f, 0.8f, -0.12f), new Vector3(0.13f, 0.08f, 0.22f), M("UpholsteryTealLight"));
+                return;
+            }
             Box("Body", t, new Vector3(0, 0.37f, 0), new Vector3(0.45f, 0.74f, 0.45f), M("WoodLight"));
             NoCol(Box("Top", t, new Vector3(0, 0.75f, 0), new Vector3(0.47f, 0.025f, 0.47f), M("PlasticWhite")));
             NoCol(Box("Drawer", t, new Vector3(-0.228f, 0.6f, 0), new Vector3(0.01f, 0.18f, 0.4f), M("PlasticWhite")));
@@ -283,6 +319,12 @@ namespace HSE.EditorTools
 
         static void BuildOverbedTable(Transform t)
         {
+            if (UseModel(t, "Furniture/OverbedTable", (new Vector3(-0.36f, 0.92f, 0), new Vector3(0.87f, 0.04f, 0.43f)), (new Vector3(0, 0.45f, 0), new Vector3(0.12f, 0.9f, 0.6f))))
+            {
+                NoCol(Box("Book", t, new Vector3(-0.5f, 0.95f, 0.06f), new Vector3(0.16f, 0.03f, 0.23f), M("Red")));
+                NoCol(Cyl("Cup", t, new Vector3(-0.25f, 0.985f, -0.08f), 0.07f, 0.1f, M("PlasticWhite")));
+                return;
+            }
             Box("Base", t, new Vector3(0, 0.05f, 0), new Vector3(0.12f, 0.05f, 0.62f), M("DarkMetal"));
             foreach (var sz in new[] { -1, 1 })
                 NoCol(Cyl("Caster", t, new Vector3(0, 0.03f, sz * 0.27f), 0.06f, 0.03f, M("Black"), new Vector3(0, 0, 90)));
@@ -425,10 +467,13 @@ namespace HSE.EditorTools
             var mon = Group("VitalsMonitor", t, new Vector3(0, 1.75f, -0.31f));
             mon.transform.localRotation = Quaternion.Euler(-10, 15, 0);
             var m = mon.transform;
-            Box("Body", m, Vector3.zero, new Vector3(0.4f, 0.31f, 0.07f), M("MonitorBody"));
+            if (!UseModel(m, "Equipment/VitalsMonitor", (Vector3.zero, new Vector3(0.4f, 0.31f, 0.07f))))
+            {
+                Box("Body", m, Vector3.zero, new Vector3(0.4f, 0.31f, 0.07f), M("MonitorBody"));
+                NoCol(Box("Handle", m, new Vector3(0, 0.17f, 0), new Vector3(0.2f, 0.025f, 0.04f), M("MonitorBody")));
+                NoCol(Box("StatusLED", m, new Vector3(0.17f, -0.135f, -0.036f), new Vector3(0.012f, 0.006f, 0.004f), M("EmissiveGreen")));
+            }
             NoCol(Box("Screen", m, new Vector3(0, 0.01f, -0.036f), new Vector3(0.35f, 0.24f, 0.004f), M("Screen")));
-            NoCol(Box("Handle", m, new Vector3(0, 0.17f, 0), new Vector3(0.2f, 0.025f, 0.04f), M("MonitorBody")));
-            NoCol(Box("StatusLED", m, new Vector3(0.17f, -0.135f, -0.036f), new Vector3(0.012f, 0.006f, 0.004f), M("EmissiveGreen")));
 
             float z = -0.039f;
             // ECG trace.
@@ -466,6 +511,11 @@ namespace HSE.EditorTools
 
         static void BuildIvPole(Transform t)
         {
+            if (UseModel(t, "Equipment/IVPole", (new Vector3(0, 1.0f, 0), new Vector3(0.05f, 2.0f, 0.05f)), (new Vector3(0, 1.2f, -0.06f), new Vector3(0.15f, 0.19f, 0.11f))))
+            {
+                Label("Rate", t, new Vector3(0, 1.24f, -0.119f), new Vector2(0.1f, 0.05f), "125 mL/h", new Color(0.8f, 0.95f, 1f), TextAlignmentOptions.Center);
+                return;
+            }
             Star(t, 0.05f, 5, 0.25f, M("Metal"));
             Cyl("Pole", t, new Vector3(0, 1.0f, 0), 0.025f, 1.9f, M("Metal"));
             NoCol(Box("HookBar", t, new Vector3(0, 1.95f, 0), new Vector3(0.3f, 0.01f, 0.01f), M("Metal")));
@@ -492,6 +542,9 @@ namespace HSE.EditorTools
         static void BuildProcedureTrolley(Transform t)
         {
             // Local +Z faces the bed (world +X).
+            bool trolleyModel = UseModel(t, "Equipment/ProcedureTrolley", (new Vector3(0, 0.92f, 0), new Vector3(0.74f, 0.03f, 0.48f)), (new Vector3(0, 0.5f, 0), new Vector3(0.74f, 0.02f, 0.48f)), (new Vector3(0.14f, 0.72f, 0), new Vector3(0.4f, 0.36f, 0.42f)));
+            if (!trolleyModel)
+            {
             foreach (var sx in new[] { -1, 1 })
             foreach (var sz in new[] { -1, 1 })
             {
@@ -509,6 +562,7 @@ namespace HSE.EditorTools
             for (int i = 0; i < 3; i++)
                 NoCol(Box("DrawerFront_" + i, t, new Vector3(0.14f, 0.84f - i * 0.115f, 0.212f), new Vector3(0.36f, 0.1f, 0.006f), M(drawerMats[i])));
             NoCol(Cyl("PushHandle", t, new Vector3(0, 1.0f, -0.27f), 0.025f, 0.6f, M("Metal"), new Vector3(0, 0, 90)));
+            }
 
             float top = 0.935f;
             var items = Group("Supplies", t, new Vector3(0, top, 0)).transform;
@@ -738,6 +792,7 @@ namespace HSE.EditorTools
             Lit("Curtain", new Color(0.56f, 0.73f, 0.82f), 0.05f);
             Lit("CurtainMesh", new Color(0.9f, 0.92f, 0.93f), 0.05f);
             Lit("Black", new Color(0.06f, 0.06f, 0.07f), 0.5f);
+            Lit("Rubber", new Color(0.09f, 0.09f, 0.1f), 0.2f);
             Lit("Red", new Color(0.78f, 0.13f, 0.13f), 0.4f);
             Lit("Yellow", new Color(0.97f, 0.8f, 0.1f), 0.4f);
             Lit("GreenO2", new Color(0.1f, 0.58f, 0.3f), 0.45f);
@@ -770,6 +825,60 @@ namespace HSE.EditorTools
             Transparent("DarkGlass", new Color(0.2f, 0.25f, 0.3f, 0.6f), 0.95f);
             Transparent("IVBag", new Color(0.9f, 0.95f, 1f, 0.45f), 0.8f);
             Transparent("SpecimenBag", new Color(0.95f, 0.95f, 0.98f, 0.4f), 0.7f);
+
+            // CC0 detail textures from Poly Haven (Assets/HSE/ThirdParty/PolyHaven). Skipped if the files are absent.
+            const string ph = "Assets/HSE/ThirdParty/PolyHaven/";
+            Detail("Floor", ph + "interior_tiles/interior_tiles_diff_1k.jpg", ph + "interior_tiles/interior_tiles_nor_gl_1k.jpg", new Vector2((RoomW + 0.2f) / 1.9f, (RoomD + 0.2f) / 1.9f), Color.white, 0.6f, 0.55f);
+            Detail("WoodLight", ph + "oak_veneer_01/oak_veneer_01_diff_1k.jpg", ph + "oak_veneer_01/oak_veneer_01_nor_gl_1k.jpg", new Vector2(0.8f, 0.8f), new Color(1f, 0.97f, 0.92f), 0.5f, 0.35f);
+            Detail("Door", ph + "oak_veneer_01/oak_veneer_01_diff_1k.jpg", ph + "oak_veneer_01/oak_veneer_01_nor_gl_1k.jpg", new Vector2(1f, 1f), new Color(0.85f, 0.78f, 0.7f), 0.5f, 0.3f);
+            Detail("Tile", ph + "long_white_tiles/long_white_tiles_diff_1k.jpg", ph + "long_white_tiles/long_white_tiles_nor_gl_1k.jpg", new Vector2(0.6f, 0.6f), Color.white, 1f, 0.6f);
+            Detail("Wall", null, ph + "ceiling_interior/ceiling_interior_nor_gl_1k.jpg", new Vector2(3f, 1.5f), default, 0.25f, -1);
+            Detail("Wainscot", null, ph + "ceiling_interior/ceiling_interior_nor_gl_1k.jpg", new Vector2(3f, 0.5f), default, 0.2f, -1);
+            foreach (var up in new[] { "UpholsteryBlue", "UpholsteryTeal", "UpholsteryTealLight", "Mattress" })
+                Detail(up, null, ph + "fabric_leather_02/fabric_leather_02_nor_gl_1k.jpg", new Vector2(3f, 3f), default, 0.6f, -1);
+        }
+
+        /// <summary>Adds a diffuse and/or normal map to an existing material. tint/smoothness are applied only when given.</summary>
+        static void Detail(string name, string diffusePath, string normalPath, Vector2 tiling, Color tint, float normalScale, float smoothness)
+        {
+            if (!Mats.TryGetValue(name, out var m)) return;
+            var diff = diffusePath != null ? LoadTexture(diffusePath, false) : null;
+            var norm = normalPath != null ? LoadTexture(normalPath, true) : null;
+            if (diff == null && norm == null) return;
+            if (diff != null)
+            {
+                m.SetTexture("_BaseMap", diff);
+                m.SetTextureScale("_BaseMap", tiling);
+                if (tint != default) m.SetColor("_BaseColor", tint);
+            }
+            else
+            {
+                // Keep the flat colour but tile the (absent) base map like the normal map.
+                m.SetTexture("_BaseMap", null);
+                m.SetTextureScale("_BaseMap", tiling);
+            }
+            if (norm != null)
+            {
+                m.SetTexture("_BumpMap", norm);
+                m.SetFloat("_BumpScale", normalScale);
+                m.EnableKeyword("_NORMALMAP");
+            }
+            if (smoothness >= 0) m.SetFloat("_Smoothness", smoothness);
+            EditorUtility.SetDirty(m);
+        }
+
+        static Texture2D LoadTexture(string path, bool normal)
+        {
+            if (!(AssetImporter.GetAtPath(path) is TextureImporter imp)) return null;
+            var wanted = normal ? TextureImporterType.NormalMap : TextureImporterType.Default;
+            if (imp.textureType != wanted || imp.maxTextureSize != 1024)
+            {
+                imp.textureType = wanted;
+                imp.maxTextureSize = 1024;
+                imp.anisoLevel = 4;
+                imp.SaveAndReimport();
+            }
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
         static Material M(string name) => Mats.TryGetValue(name, out var m) ? m : Mats["PlasticGray"];
@@ -949,6 +1058,57 @@ namespace HSE.EditorTools
                 NoCol(Box("Spoke", leg, new Vector3(0, y, length / 2), new Vector3(0.04f, 0.03f, length), m));
                 NoCol(Sph("Caster", leg, new Vector3(0, 0.03f, length), Vector3.one * 0.055f, M("Black")));
             }
+        }
+
+        /// <summary>Poly Haven CC0 wheelchair, parked against the south wall. Skipped if the download is absent.</summary>
+        static void BuildWheelchair(Transform t)
+        {
+            const string dir = "Assets/HSE/ThirdParty/PolyHaven/wheelchair_01/";
+            var asset = AssetDatabase.LoadAssetAtPath<GameObject>(dir + "wheelchair_01_1k.fbx");
+            if (asset == null) return;
+            if (AssetImporter.GetAtPath(dir + "wheelchair_01_1k.fbx") is ModelImporter imp && imp.materialImportMode != ModelImporterMaterialImportMode.None)
+            {
+                imp.materialImportMode = ModelImporterMaterialImportMode.None;
+                imp.importAnimation = false;
+                imp.SaveAndReimport();
+            }
+            var m = LoadOrCreate("Wheelchair");
+            m.SetTexture("_BaseMap", LoadTexture(dir + "textures/wheelchair_01_diff_1k.jpg", false));
+            m.SetColor("_BaseColor", Color.white);
+            m.SetFloat("_Metallic", 0.35f);
+            m.SetFloat("_Smoothness", 0.45f);
+            EditorUtility.SetDirty(m);
+
+            var inst = (GameObject)PrefabUtility.InstantiatePrefab(asset);
+            inst.transform.SetParent(t, false);
+            foreach (var r in inst.GetComponentsInChildren<Renderer>())
+                r.sharedMaterials = System.Linq.Enumerable.ToArray(System.Linq.Enumerable.Repeat(m, Mathf.Max(1, r.sharedMaterials.Length)));
+
+            // Stand it upright and on the floor whatever axes/units the FBX came with.
+            Bounds B()
+            {
+                var rs = inst.GetComponentsInChildren<Renderer>();
+                var b = rs[0].bounds;
+                foreach (var r in rs) b.Encapsulate(r.bounds);
+                return b;
+            }
+            var bounds = B();
+            if (bounds.size.y > 20f) { inst.transform.localScale *= 0.01f; bounds = B(); }
+            if (bounds.size.y < 0.95f) { inst.transform.localRotation = Quaternion.Euler(-90, 0, 0) * inst.transform.localRotation; bounds = B(); }
+            inst.transform.position += new Vector3(t.position.x - bounds.center.x, -bounds.min.y, t.position.z - bounds.center.z);
+            bounds = B();
+            Box("Collider", t, t.InverseTransformPoint(bounds.center), bounds.size, M("PlasticGray")).GetComponent<MeshRenderer>().enabled = false;
+        }
+
+        /// <summary>Places Assets/HSE/Models/{rel}.fbx under t with invisible box colliders; false if the model is missing.</summary>
+        static bool UseModel(Transform t, string rel, params (Vector3 center, Vector3 size)[] colliders)
+        {
+            string path = "Assets/HSE/Models/" + rel + ".fbx";
+            if (!ModelLibrary.Exists(path)) return false;
+            ModelLibrary.Place(path, t, M, "Model");
+            foreach (var (c, s) in colliders)
+                Box("Collider", t, c, s, M("PlasticGray")).GetComponent<MeshRenderer>().enabled = false;
+            return true;
         }
 
         static GameObject NoCol(GameObject go)
