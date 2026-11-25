@@ -17,6 +17,7 @@ namespace HSE.EditorTools
             public float Hr, Spo2, Rr, Sys, Dia, Temp;
             public bool Irregular;
             public (string, float)[] Labs;
+            public string LabComment;
             public string[] Orders;
             public Color Skin, Hair, Gown;
         }
@@ -30,7 +31,12 @@ namespace HSE.EditorTools
                 Problems = "Right lower lobe pneumonia, IV antibiotics day 3. Needs 2 L/min oxygen. Productive cough.",
                 Diet = "Normal diet, encourage fluids", Mobility = "Independent", Falls = "Low",
                 Hr = 96, Spo2 = 94, Rr = 20, Sys = 118, Dia = 72, Temp = 38.1f,
-                Labs = new[] { ("WBC", 14.2f), ("CRP", 86f), ("UREA", 7.4f) },
+                Labs = new[] { ("WBC", 14.2f), ("HGB", 138f), ("PLT", 312f), ("NA", 136f), ("K", 4.1f), ("UREA", 7.7f), ("CREA", 92f), ("CRP", 86f),
+                                ("UA_LEU", 0f), ("UA_NIT", 0f), ("UA_GLU", 0f), ("UA_KET", 0f), ("UA_PRO", 0f) },
+                LabComment = "White cells (14.2) and CRP (86) are raised, which fits the chest infection on day 3 of antibiotics. " +
+                             "Urea is at the top of the normal range, so keep encouraging fluids. Sodium, potassium, creatinine, " +
+                             "haemoglobin, platelets and the urine test are normal. Report the raised infection markers to VR Doctor 1 " +
+                             "and keep monitoring temperature and oxygen saturation.",
                 Blood = "A Rh(+)", Allergies = "Penicillin",
                 Plan = "Morning bloods to review infection markers. Urinalysis. Vital signs every 4 hours.",
                 Orders = new[] { "CBC", "BIOCHEM", "CRP", "UA" },
@@ -43,7 +49,12 @@ namespace HSE.EditorTools
                 Problems = "High blood glucose for 3 days, insulin being adjusted. Check ketones. Hypo awareness.",
                 Diet = "Diabetic diet, carbohydrate counted", Mobility = "Independent", Falls = "Low",
                 Hr = 88, Spo2 = 98, Rr = 18, Sys = 128, Dia = 80, Temp = 36.9f,
-                Labs = new[] { ("GLU", 13.8f), ("K", 5.3f), ("UA_GLU", 2f), ("UA_KET", 1f) },
+                Labs = new[] { ("GLU", 13.8f), ("NA", 134f), ("K", 5.2f), ("UREA", 6.1f), ("CREA", 84f), ("WBC", 8.6f), ("HGB", 152f), ("PLT", 268f),
+                                ("UA_LEU", 0f), ("UA_NIT", 0f), ("UA_GLU", 2f), ("UA_KET", 1f), ("UA_PRO", 0f) },
+                LabComment = "Fasting glucose is high at 13.8 mmol/L and the urine shows glucose and ketones, so blood sugar control " +
+                             "is poor and the body has started to burn fat for energy. Sodium is slightly low and potassium is at the " +
+                             "upper limit, which can happen with high glucose. Blood count and kidney function are normal. Inform " +
+                             "VR Doctor 2 today, check capillary glucose and ketones as in the diabetes plan, and encourage fluids.",
                 Blood = "0 Rh(+)", Allergies = "No known allergies",
                 Plan = "Fasting glucose and renal function before breakfast. Urinalysis for ketones.",
                 Orders = new[] { "GLU", "BIOCHEM", "CBC", "UA" },
@@ -56,7 +67,12 @@ namespace HSE.EditorTools
                 Problems = "Atrial fibrillation, fast rate at times. Warfarin: INR target 2-3. Bruising on arms - watch for bleeding.",
                 Diet = "Normal diet, consistent vitamin K", Mobility = "Walks with stick", Falls = "Medium",
                 Hr = 102, Spo2 = 96, Rr = 17, Sys = 136, Dia = 84, Temp = 36.7f, Irregular = true,
-                Labs = new[] { ("INR", 3.6f), ("PT", 31f), ("HGB", 118f) },
+                Labs = new[] { ("PT", 31f), ("APTT", 36.2f), ("INR", 3.6f), ("WBC", 7.2f), ("HGB", 118f), ("PLT", 224f),
+                                ("NA", 139f), ("K", 4.4f), ("UREA", 6.0f), ("CREA", 98f) },
+                LabComment = "INR is 3.6, above the warfarin target of 2 to 3, and the prothrombin time is prolonged, so the blood " +
+                             "is clotting too slowly and the bleeding risk is higher. Haemoglobin is low at 118 g/L, which together " +
+                             "with the bruising needs attention. Electrolytes and kidney function are normal. Tell VR Doctor 1 before " +
+                             "the next warfarin dose, check for any signs of bleeding and avoid injections into muscle.",
                 Blood = "B Rh(+)", Allergies = "Aspirin",
                 Plan = "Daily INR. Check full blood count and electrolytes. Watch for bleeding.",
                 Orders = new[] { "COAG", "CBC", "BIOCHEM" },
@@ -69,7 +85,12 @@ namespace HSE.EditorTools
                 Problems = "Urinary infection with fever and new confusion at night. Reduced fluid intake. Kidney function to watch.",
                 Diet = "Soft diet, fluid chart 2 L/day", Mobility = "Assist x2, frame", Falls = "High",
                 Hr = 104, Spo2 = 95, Rr = 22, Sys = 104, Dia = 62, Temp = 38.6f,
-                Labs = new[] { ("WBC", 15.8f), ("CRP", 112f), ("CREA", 128f), ("UREA", 9.6f), ("UA_LEU", 3f), ("UA_NIT", 1f), ("UCULT", 1f) },
+                Labs = new[] { ("WBC", 15.8f), ("HGB", 124f), ("PLT", 356f), ("CRP", 112f),
+                                ("UA_LEU", 3f), ("UA_NIT", 1f), ("UA_GLU", 0f), ("UA_KET", 0f), ("UA_PRO", 1f), ("UCULT", 1f), ("BCULT", 0f) },
+                LabComment = "White cells (15.8) and CRP (112) are clearly raised, and the urine shows leukocytes, nitrite and a " +
+                             "trace of protein, with E. coli growing in the urine culture. This fits a urinary tract infection, " +
+                             "which can also explain the new confusion at night. Blood cultures show no growth so far. Inform " +
+                             "VR Doctor 3, keep the fluid chart, and watch temperature, blood pressure and confusion closely.",
                 Blood = "AB Rh(-)", Allergies = "Sulfonamides",
                 Plan = "Urine sample before the next antibiotic dose. Blood cultures if temperature above 38.5 C.",
                 Orders = new[] { "CBC", "CRP", "UA", "UCULT", "BCULT" },
@@ -82,7 +103,12 @@ namespace HSE.EditorTools
                 Problems = "Yellow skin and eyes, tired, itching. Liver scan booked. Watch for confusion and bleeding.",
                 Diet = "Low salt diet", Mobility = "Independent", Falls = "Low",
                 Hr = 84, Spo2 = 97, Rr = 16, Sys = 112, Dia = 70, Temp = 37.2f,
-                Labs = new[] { ("ALT", 186f), ("AST", 154f), ("ALP", 210f), ("BILI", 64f), ("INR", 1.6f), ("PLT", 118f) },
+                Labs = new[] { ("ALT", 186f), ("AST", 154f), ("ALP", 210f), ("BILI", 64f), ("PT", 14.6f), ("APTT", 33.8f), ("INR", 1.6f),
+                                ("WBC", 6.4f), ("HGB", 141f), ("PLT", 118f) },
+                LabComment = "All four liver tests are raised, and bilirubin at 64 umol/L explains the yellow skin and eyes. Clotting " +
+                             "is slower than normal (INR 1.6) and platelets are low at 118, so the liver is not making enough clotting " +
+                             "factors and the bleeding risk is higher. Inform VR Doctor 2, watch for bleeding and confusion, and " +
+                             "remember the latex allergy: use nitrile gloves when taking blood.",
                 Blood = "0 Rh(-)", Allergies = "Latex (use nitrile gloves)",
                 Plan = "Liver function and clotting screen this morning. Monitor for confusion.",
                 Orders = new[] { "LFT", "COAG", "CBC" },
@@ -129,8 +155,9 @@ namespace HSE.EditorTools
                 p.heartRate = s.Hr; p.spo2 = s.Spo2; p.respRate = s.Rr;
                 p.systolic = s.Sys; p.diastolic = s.Dia; p.temperature = s.Temp;
                 p.irregularRhythm = s.Irregular;
-                p.labBias = new List<PatientRecord.LabBias>();
-                if (s.Labs != null) foreach (var (a, v) in s.Labs) p.labBias.Add(new PatientRecord.LabBias(a, v));
+                p.labResults = new List<PatientRecord.LabBias>();
+                if (s.Labs != null) foreach (var (a, v) in s.Labs) p.labResults.Add(new PatientRecord.LabBias(a, v));
+                p.labComment = s.LabComment;
                 EditorUtility.SetDirty(p);
                 list.Add(p);
             }

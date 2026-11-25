@@ -5,11 +5,22 @@ using System.Text;
 
 namespace HSE.Clinical.Lab
 {
-    /// <summary>Writes a short plain-language comment on a lab report. Implementations may be local or call an AI service.</summary>
+    /// <summary>Writes a short plain-language comment on a lab report. Implementations may use stored text or build it from the flags.</summary>
     public interface IReportCommentator
     {
         /// <summary>Coroutine; calls <paramref name="done"/> exactly once with the comment (never null).</summary>
         IEnumerator Comment(LabReport report, Action<string> done);
+    }
+
+    /// <summary>Uses the comment stored on the patient record; falls back to <see cref="RuleBasedCommentator"/> if it is empty.</summary>
+    public class StoredCommentator : IReportCommentator
+    {
+        public IEnumerator Comment(LabReport report, Action<string> done)
+        {
+            var stored = report.Patient ? report.Patient.labComment : null;
+            done(string.IsNullOrWhiteSpace(stored) ? RuleBasedCommentator.Build(report) : stored.Trim());
+            yield break;
+        }
     }
 
     /// <summary>Offline commentary built from the flags. Used when no AI endpoint is configured, and as the fallback.</summary>

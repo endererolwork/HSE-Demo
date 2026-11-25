@@ -150,8 +150,8 @@ namespace HSE.EditorTools
             // "Next patient" on the results screen restarts with a different patient.
             root.AddComponent<ScenarioSession>().Bind(runner, roster, pda, panel);
 
-            // Simulated lab, its report panel and AI comments.
-            root.AddComponent<HSE.Clinical.Lab.LabService>().Bind(AiSettings());
+            // Simulated lab and its report panel (results and comments are stored on each patient).
+            root.AddComponent<HSE.Clinical.Lab.LabService>();
             var report = new GameObject("BloodReport").AddComponent<BloodReportPanel>();
             report.transform.SetParent(root.transform, false);
 
@@ -226,18 +226,6 @@ namespace HSE.EditorTools
             }
             h.highlighted = false;
             EditorUtility.SetDirty(h);
-        }
-
-        static HSE.Clinical.Lab.AiCommentSettings AiSettings()
-        {
-            const string path = "Assets/HSE/Data/AiCommentSettings.asset";
-            var a = AssetDatabase.LoadAssetAtPath<HSE.Clinical.Lab.AiCommentSettings>(path);
-            if (!a)
-            {
-                a = ScriptableObject.CreateInstance<HSE.Clinical.Lab.AiCommentSettings>();
-                AssetDatabase.CreateAsset(a, path);
-            }
-            return a;
         }
 
         static Material TraceMaterial()

@@ -5,9 +5,8 @@ using System.Linq;
 namespace HSE.Clinical.Lab
 {
     /// <summary>
-    /// Makes plausible, fictional results for a lab request. Each analyte has an adult reference range;
-    /// a patient's <see cref="PatientRecord.labBias"/> pulls the value towards their condition, everything else
-    /// lands in the normal range. Values vary a little every time.
+    /// Builds the lab report for a request from the results stored on the patient (<see cref="PatientRecord.labResults"/>),
+    /// so each patient always gets the same, pre-written results. Analytes without a stored value read mid-normal.
     /// </summary>
     public class LabResultGenerator
     {
@@ -68,10 +67,6 @@ namespace HSE.Clinical.Lab
             ["SPUTUM"] = new[] { Q("SPUTUM", "Sputum culture", "Normal upper respiratory flora", "Streptococcus pneumoniae isolated") },
         };
 
-        readonly Random _rng;
-
-        public LabResultGenerator(int? seed = null) => _rng = seed.HasValue ? new Random(seed.Value) : new Random();
-
         public LabReport Generate(LabOrder order)
         {
             var report = new LabReport
@@ -81,7 +76,7 @@ namespace HSE.Clinical.Lab
                 Collected = order.Time,
                 Reported = DateTime.Now,
             };
-            var bias = order.Patient.labBias.ToDictionary(b => b.analyte, b => (double)b.value);
+            var bias = order.Patient.labResults.GroupBy(b => b.analyte).ToDictionary(g => g.Key, g => (double)g.First().value);
             foreach (var test in order.Tests)
             {
                 if (!Panels.TryGetValue(test.Id, out var analytes)) continue;
@@ -96,9 +91,7 @@ namespace HSE.Clinical.Lab
             double lo = a.Low, hi = a.High;
             if (a.Code == "HGB" && p.gender == "Female") { lo = 120; hi = 150; }
 
-            double v = bias.TryGetValue(a.Code, out var target)
-                ? target * (1 + (_rng.NextDouble() - 0.5) * 0.06)               // +-3% around the patient's typical value
-                : lo + (hi - lo) * (0.25 + _rng.NextDouble() * 0.5);            // middle half of the normal range
+            double v = bias.TryGetValue(a.Code, out var stored) ? stored : lo + (hi - lo) * 0.5;
             v = Math.Round(v, a.Decimals);
 
             return new LabResult

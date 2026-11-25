@@ -47,8 +47,12 @@ namespace HSE.Clinical
         [Tooltip("Irregular heart rhythm (e.g. atrial fibrillation): more beat-to-beat variation.")]
         public bool irregularRhythm;
 
-        [Header("Lab results this patient tends to produce (analyte code -> typical value)")]
-        public List<LabBias> labBias = new List<LabBias>();
+        [Header("Lab results (fixed for this patient: analyte code -> value; qualitative tests use levels 0,1,2..)")]
+        [UnityEngine.Serialization.FormerlySerializedAs("labBias")]
+        public List<LabBias> labResults = new List<LabBias>();
+
+        [Tooltip("Comment shown under the lab report as the AI assistant's comments. Written in advance for this patient.")]
+        [TextArea(3, 8)] public string labComment = "";
 
         [System.Serializable]
         public struct LabBias

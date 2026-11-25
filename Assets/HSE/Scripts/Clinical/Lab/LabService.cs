@@ -5,19 +5,16 @@ namespace HSE.Clinical.Lab
 {
     /// <summary>
     /// The simulated laboratory: a submitted request comes back as a report after a short "processing" delay,
-    /// followed by an AI (or offline) comment on it.
+    /// followed by the comment written in advance for that patient.
     /// </summary>
     public class LabService : MonoBehaviour
     {
         [SerializeField, Min(0)] float processingSeconds = 6f;
-        [SerializeField] AiCommentSettings aiSettings;
 
         public LabReport Latest { get; private set; }
         public string LatestComment { get; private set; }
 
         readonly LabResultGenerator _generator = new LabResultGenerator();
-
-        public void Bind(AiCommentSettings settings) => aiSettings = settings;
 
         void OnEnable()
         {
@@ -47,9 +44,7 @@ namespace HSE.Clinical.Lab
             LatestComment = null;
             ClinicalEvents.RaiseLabReportReady(Latest);
 
-            IReportCommentator commentator = ClaudeReportCommentator.IsAvailable(aiSettings)
-                ? new ClaudeReportCommentator(aiSettings)
-                : new RuleBasedCommentator();
+            IReportCommentator commentator = new StoredCommentator();
             var report = Latest;
             yield return commentator.Comment(report, text => LatestComment = text);
             if (report == Latest) ClinicalEvents.RaiseLabCommentReady(report, LatestComment);
