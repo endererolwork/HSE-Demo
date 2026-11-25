@@ -48,6 +48,7 @@ namespace HSE.EditorTools
             var bed = Find("HospitalBed");
             var wristband = Find("Wristband");
             var wristQr = Find("Wristband_QR");
+            var patientHead = Find("Head"); // small highlight on the patient instead of the whole bed
             var handRub = Interactable(Find("HandRubDispenser"));
             var gloves = Interactable(Find("GloveBox_M"));
             var careBoard = Interactable(Find("CareBoard"));
@@ -82,12 +83,12 @@ namespace HSE.EditorTools
             grab.SetItem(pdaGrab);
 
             var approach = Step<ReachLocationStep>("approach", "Go to the patient",
-                "Walk to the right side of the bed.", StepRequirement.Mandatory, 5, HighlightStyle.Hint, marker);
+                "Walk to the right side of the bed.", StepRequirement.Mandatory, 5, HighlightStyle.Hint, patientHead ? patientHead.gameObject : marker);
             approach.SetLocation(bedside, 0.9f);
             marker.AddComponent<ShowWhileStepActive>().Bind(approach);
 
             var scan = Step<ScanWristbandStep>("scan_wristband", "Scan the wristband",
-                "Hold the PDA and aim the red beam at the QR code on the patient's right wrist.", StepRequirement.Mandatory, 15, HighlightStyle.Objective,
+                "Pull the trigger or press SCAN on the PDA and point the laser at the QR code on the patient's right wrist.", StepRequirement.Mandatory, 15, HighlightStyle.Objective,
                 wristband ? wristband.gameObject : null, wristQr ? wristQr.gameObject : null);
             scan.SetExpectedPatient(null); // whichever patient the roster put in the bed
 
@@ -136,7 +137,7 @@ namespace HSE.EditorTools
             panel.transform.rotation = Quaternion.Euler(0, 35, 0);
             panel.Bind(runner);
 
-            PrepareHighlights(pda ? pda.gameObject : null, marker);
+            PrepareHighlights(pda ? pda.gameObject : null, patientHead ? patientHead.gameObject : null);
 
             // Patient for this session: random from the roster; drives the wristband, figure look and step checks.
             var roster = root.AddComponent<PatientRoster>();
@@ -145,6 +146,9 @@ namespace HSE.EditorTools
 
             var gloveVisual = root.AddComponent<GloveVisual>();
             gloveVisual.Bind(runner, GloveMaterial());
+
+            // "Next patient" on the results screen restarts with a different patient.
+            root.AddComponent<ScenarioSession>().Bind(runner, roster, pda, panel);
 
             EditorUtility.SetDirty(root);
             Debug.Log("[HSE] Scenario set up with " + runner.Steps.Count + " steps.");
@@ -177,7 +181,7 @@ namespace HSE.EditorTools
                 if (t) Configure(t.gameObject, PrismPreset.Objective, screen: false);
             }
             if (pda) Configure(pda, PrismPreset.Objective, screen: true);
-            if (bed) Configure(bed, PrismPreset.SubtleHover, screen: false); // bed argument is the floor marker now
+            if (bed) Configure(bed, PrismPreset.SubtleHover, screen: false); // the patient's head for "go to the patient"
         }
 
         static void Configure(GameObject go, PrismPreset preset, bool screen)

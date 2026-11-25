@@ -75,7 +75,7 @@ namespace HSE.Training.UI
             {
                 bool showDone = Time.time < _doneUntil;
                 Show(false, false);
-                if (showDone) PlaceInFront(_compassLabel, _compassText, Loc.T("guide.done"), 0f);
+                if (showDone) PlaceInFront(_compassLabel, _compassText, Loc.T("guide.done") + "\n<size=60%>" + Loc.T("guide.nextHint") + "</size>", 0f);
                 return;
             }
 

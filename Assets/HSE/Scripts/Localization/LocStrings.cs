@@ -37,8 +37,8 @@ namespace HSE.Localization
             ["step.approach.cue"] = ("Go to the bedside", "Yatağın yanına git"),
 
             ["step.scan_wristband.title"] = ("Scan the wristband", "Hasta bilekliğini okut"),
-            ["step.scan_wristband.instr"] = ("Hold the PDA and aim the red beam at the QR code on the patient's right wrist.",
-                "PDA'yı tut ve kırmızı ışını hastanın sağ bileğindeki QR koda doğrult."),
+            ["step.scan_wristband.instr"] = ("Pull the trigger or press SCAN on the PDA and point the laser at the QR code on the patient's right wrist.",
+                "Tetiğe veya PDA'daki TARA tuşuna bas, lazeri hastanın sağ bileğindeki QR koda doğrult."),
             ["step.scan_wristband.cue"] = ("Scan the wristband", "Bilekliği okut"),
 
             ["step.confirm_identity.title"] = ("Confirm identity", "Kimliği doğrula"),
@@ -80,8 +80,8 @@ namespace HSE.Localization
             ["pda.title.order"] = ("Lab Request", "Laboratuvar İstemi"),
             ["pda.title.sent"] = ("Request Sent", "İstem Gönderildi"),
             ["pda.scan.headline"] = ("Scan the patient wristband", "Hasta bilekliğini okutun"),
-            ["pda.scan.help"] = ("Aim the red beam at the QR code on the patient's wristband.",
-                "Kırmızı ışını hastanın bilekliğindeki QR koda doğrultun."),
+            ["pda.scan.help"] = ("Pull the trigger or press SCAN, then point the red laser at the wristband QR code.",
+                "Tetiğe veya TARA tuşuna bas, kırmızı lazeri bileklikteki QR koda doğrult."),
             ["pda.scan.last"] = ("Last scanned patient: <b>{0}</b>", "Son okunan hasta: <b>{0}</b>"),
             ["pda.scan.notWristband"] = ("The scanned code is not a patient wristband.", "Okunan kod bir hasta bilekliği değil."),
             ["pda.age"] = ("{0} years  ·  {1}  ·  Blood type {2}", "{0} yaş  ·  {1}  ·  Kan grubu {2}"),
@@ -111,6 +111,9 @@ namespace HSE.Localization
             ["pda.sent.ref"] = ("Reference No", "Referans No"),
             ["pda.sent.next"] = ("Next: prepare and label the sample tubes.", "Sonraki adım: numune tüplerini hazırlayın ve etiketleyin."),
 
+            ["pda.scanButton"] = ("SCAN", "TARA"),
+            ["session.next"] = ("Next patient", "Sonraki hasta"),
+            ["guide.nextHint"] = ("Press \"Next patient\" on your task list to continue.", "Devam etmek için görev listendeki \"Sonraki hasta\"ya bas."),
             ["pda.tab.patient"] = ("Patient", "Hasta"),
             ["pda.tab.orders"] = ("Orders", "İstemler"),
             ["pda.selected"] = ("Selected tests: {0}", "Seçilen test: {0}"),

@@ -34,6 +34,19 @@ namespace HSE.Clinical
             Apply(patients[i]);
         }
 
+        /// <summary>Puts a different patient in the bed (random, never the same one twice in a row).</summary>
+        public PatientRecord ApplyNext()
+        {
+            if (patients.Count == 0) return null;
+            int current = patients.IndexOf(ActivePatient.Current);
+            int next = current;
+            if (patients.Count > 1)
+                while (next == current) next = UnityEngine.Random.Range(0, patients.Count);
+            else next = 0;
+            Apply(patients[next]);
+            return patients[next];
+        }
+
         public void Apply(PatientRecord p)
         {
             ActivePatient.Set(p);

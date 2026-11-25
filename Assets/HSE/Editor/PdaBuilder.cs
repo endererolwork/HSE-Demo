@@ -186,15 +186,18 @@ namespace HSE.EditorTools
 
         static Material BeamMaterial()
         {
+            // Particles/Unlit multiplies by vertex colour, so each LineRenderer can tint the laser red (or green on a read).
             string path = MatDir + "/PDA_ScanBeam.mat";
+            var shader = Shader.Find("Universal Render Pipeline/Particles/Unlit");
             var m = AssetDatabase.LoadAssetAtPath<Material>(path);
             if (m == null)
             {
-                m = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+                m = new Material(shader);
                 AssetDatabase.CreateAsset(m, path);
             }
+            m.shader = shader;
             m.SetFloat("_Surface", 1);
-            m.SetFloat("_Blend", 2);
+            m.SetFloat("_Blend", 2); // additive
             m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
             m.SetFloat("_DstBlend", (float)BlendMode.One);
             m.SetFloat("_ZWrite", 0);
@@ -237,13 +240,7 @@ namespace HSE.EditorTools
                 Debug.LogWarning("[HSE] Wristband_QR not found; patient cannot be scanned.");
                 return;
             }
-            EnsureFolder(DataDir);
-            var patient = AssetDatabase.LoadAssetAtPath<PatientRecord>(PatientPath);
-            if (patient == null)
-            {
-                patient = ScriptableObject.CreateInstance<PatientRecord>();
-                AssetDatabase.CreateAsset(patient, PatientPath);
-            }
+            var patient = PatientLibrary.CreateOrUpdate()[0]; // PatientRoster swaps it per session
             var code = qr.GetComponent<ScannableCode>();
             if (code == null) code = qr.gameObject.AddComponent<ScannableCode>();
             code.kind = CodeKind.PatientWristband;

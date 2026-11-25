@@ -47,6 +47,18 @@ namespace HSE.Devices
         TextMeshProUGUI _homeStatus;
 
         public PatientRecord CurrentPatient => _patient;
+
+        /// <summary>Back to the scan screen with no patient (used when the next patient starts).</summary>
+        public void ResetApp()
+        {
+            _patient = null;
+            _identityConfirmed = false;
+            _urgent = false;
+            _selected.Clear();
+            _lastOrder = null;
+            _patientTab = PatientTab.Details;
+            ShowHome(null);
+        }
         public bool IdentityConfirmed => _identityConfirmed;
 
         void Awake()
@@ -364,6 +376,12 @@ namespace HSE.Devices
             Label(col, Loc.T("pda.scan.help"), 36, Muted, TextAlignmentOptions.Center, false, 150);
             _homeStatus = Label(col, "", 34, Ink, TextAlignmentOptions.Center, false, 100);
             Spacer(col);
+            // Hand-tracking users have no trigger: this button switches the scanner on for a few seconds.
+            MakeButton(col, Loc.T("pda.scanButton"), Red, Color.white, 130, () =>
+            {
+                var scanner = GetComponent<PdaScanner>();
+                if (scanner) scanner.ScanBurst();
+            }).GetComponentInChildren<TextMeshProUGUI>().fontSize = 48;
         }
 
         RectTransform MakeScreen(string name)

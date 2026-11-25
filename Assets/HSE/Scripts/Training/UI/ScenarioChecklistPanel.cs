@@ -36,6 +36,10 @@ namespace HSE.Training.UI
 
         public bool IsExpanded => _expanded;
 
+        /// <summary>Raised when the trainee presses "Next patient" on the results screen.</summary>
+        public event System.Action NextRequested;
+        RectTransform _nextButton;
+
         /// <summary>Opens the full list. With autoHide it folds back into the tab after a while.</summary>
         public void Expand(bool autoHide = true)
         {
@@ -123,6 +127,8 @@ namespace HSE.Training.UI
 
         void OnStarted(ScenarioRunner _)
         {
+            _finished = null;
+            _nextButton.gameObject.SetActive(false);
             Redraw();
             Expand(autoHide: true);
         }
@@ -141,6 +147,8 @@ namespace HSE.Training.UI
             _finished = report;
             Expand(autoHide: false);
             _tabText.text = Loc.T("checklist.done");
+            _nextButton.gameObject.SetActive(true);
+            _nextButton.GetComponentInChildren<TextMeshProUGUI>().text = Loc.T("session.next");
             _header.text = $"<b>{ScenarioTitle}</b>  ·  {Loc.T("checklist.done")}";
             _instruction.text = Loc.T("checklist.results");
             _list.text =
@@ -257,6 +265,18 @@ namespace HSE.Training.UI
 
             _list = Text(rt, 26, Color.white, TextAlignmentOptions.TopLeft);
             Stretch(_list.rectTransform, 28, 120, 22, 250);
+
+            _nextButton = Panel(rt, new Color(0.12f, 0.62f, 0.35f, 1f));
+            _nextButton.anchorMin = _nextButton.anchorMax = new Vector2(0.5f, 0f);
+            _nextButton.pivot = new Vector2(0.5f, 0f);
+            _nextButton.sizeDelta = new Vector2(Width - 60, 110);
+            _nextButton.anchoredPosition = new Vector2(0, 24);
+            _nextButton.GetComponent<Image>().raycastTarget = true;
+            _nextButton.gameObject.AddComponent<Button>().onClick.AddListener(() => NextRequested?.Invoke());
+            var nextText = Text(_nextButton, 40, Color.white, TextAlignmentOptions.Center);
+            nextText.fontStyle = FontStyles.Bold;
+            Stretch(nextText.rectTransform, 0, 0, 0, 0);
+            _nextButton.gameObject.SetActive(false);
 
             _toast = Text(rt, 26, new Color(1f, 0.45f, 0.45f), TextAlignmentOptions.BottomLeft);
             Stretch(_toast.rectTransform, 24, 18, 22, height - 110);

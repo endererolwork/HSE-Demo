@@ -77,6 +77,7 @@ namespace HSE.EditorTools
             MarkStatic(env);
             PdaBuilder.SetupInScene();
             ScenarioBuilder.Setup();
+            new GameObject("SceneBuildStamp").AddComponent<SceneBuildStamp>().version = SceneBuildStamp.CurrentVersion;
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddSceneToBuildSettings(ScenePath);
