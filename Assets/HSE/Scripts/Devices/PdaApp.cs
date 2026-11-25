@@ -106,7 +106,7 @@ namespace HSE.Devices
         // ------------------------------------------------------------ screens
         // Font sizes are in canvas units (720 wide = 68 mm), so 36 is about 3.4 mm tall on the device.
 
-        enum PatientTab { Details, Orders }
+        enum PatientTab { Details, Orders, Vitals, Results }
         PatientTab _patientTab = PatientTab.Details;
         SampleType _orderTab = SampleType.Blood;
 
@@ -128,6 +128,9 @@ namespace HSE.Devices
             var tabs = HRow(col, 92, 10);
             Tab(tabs, Loc.T("pda.tab.patient"), _patientTab == PatientTab.Details, () => { _patientTab = PatientTab.Details; ShowPatient(); });
             Tab(tabs, Loc.T("pda.tab.orders"), _patientTab == PatientTab.Orders, () => { _patientTab = PatientTab.Orders; ShowPatient(); });
+            Tab(tabs, Loc.T("pda.tab.vitals"), _patientTab == PatientTab.Vitals, () => { _patientTab = PatientTab.Vitals; ShowPatient(); });
+            Tab(tabs, Loc.T("pda.tab.results"), _patientTab == PatientTab.Results, () => { _patientTab = PatientTab.Results; ShowPatient(); });
+            foreach (var t in tabs.GetComponentsInChildren<TextMeshProUGUI>()) t.fontSize = 26;
 
             var card = Box(col, Card, 0);
             var cardCol = Column(card, 20, 4);
@@ -148,6 +151,8 @@ namespace HSE.Devices
                 var allergy = Box(col, RedLight, 84);
                 Label(allergy, Loc.T("pda.allergy") + "  " + p.Allergies, 36, Red, TextAlignmentOptions.Center, true);
             }
+            else if (_patientTab == PatientTab.Vitals) VitalsPage(col);
+            else if (_patientTab == PatientTab.Results) ResultsPage(col);
             else
             {
                 var plan = Box(col, Card, 0);
@@ -187,6 +192,92 @@ namespace HSE.Devices
             MakeButton(nav, Loc.T("pda.home"), Line, Ink, 112, () => ShowHome(null));
             var order = MakeButton(nav, Loc.T("pda.labRequest"), Blue, Color.white, 112, () => { _orderTab = SampleType.Blood; ShowOrder(); });
             order.interactable = _identityConfirmed;
+        }
+
+        // ------------------------------------------------------------ vitals and results pages
+
+        void VitalsPage(RectTransform col)
+        {
+            var v = HSE.Clinical.Vitals.VitalsFeed.Current;
+            var grid = Box(col, Card, 0);
+            var gcol = Column(grid, 16, 2);
+            var r1 = HRow(gcol, 52, 10);
+            Label(r1, $"<color=#1E9E5A>HR</color> <b>{v.HeartRate:0}</b>", 34, Ink, TextAlignmentOptions.Left, false);
+            Label(r1, $"<color=#1F5FBF>SpO2</color> <b>{v.SpO2:0}%</b>", 34, Ink, TextAlignmentOptions.Left, false);
+            var r2 = HRow(gcol, 52, 10);
+            Label(r2, $"<color=#D23B3B>BP</color> <b>{v.Systolic:0}/{v.Diastolic:0}</b>", 34, Ink, TextAlignmentOptions.Left, false);
+            Label(r2, $"<color=#E8920C>Temp</color> <b>{v.Temperature:0.0}</b>", 34, Ink, TextAlignmentOptions.Left, false);
+            Label(col, Loc.T("pda.vitals.trend"), 26, Muted, TextAlignmentOptions.Left, true, 34);
+            var h = HSE.Clinical.Vitals.VitalsFeed.History;
+            Chart(col, "HR", h.Select(x => x.HeartRate).ToList(), 40, 140, 60, 100, Green);
+            Chart(col, "SpO2 %", h.Select(x => x.SpO2).ToList(), 85, 100, 94, 100, Blue);
+            Chart(col, "Temp °C", h.Select(x => x.Temperature).ToList(), 35.5f, 40f, 36.1f, 37.8f, Amber);
+        }
+
+        void ResultsPage(RectTransform col)
+        {
+            var lab = FindFirstObjectByType<HSE.Clinical.Lab.LabService>();
+            var report = lab ? lab.Latest : null;
+            if (report == null || report.Patient != _patient)
+            {
+                var box = Box(col, Card, 160);
+                Label(box, Loc.T("pda.results.none"), 32, Muted, TextAlignmentOptions.Center, false);
+                return;
+            }
+            var list = Box(col, Card, 0);
+            var lcol = Column(list, 16, 2);
+            var flagged = report.Results.Where(r => r.IsOutOfRange || r.Flag == HSE.Clinical.Lab.ResultFlag.Borderline).ToList();
+            Label(lcol, Loc.F("pda.results.summary", report.OutOfRange.Count(), report.Borderline.Count()), 28, Muted, TextAlignmentOptions.Left, true, 40);
+            foreach (var r in flagged.Take(8))
+            {
+                var row = HRow(lcol, 54, 10);
+                Label(row, r.Name, 30, Ink, TextAlignmentOptions.Left, false).GetComponent<LayoutElement>().flexibleWidth = 1;
+                var color = r.IsOutOfRange ? "#C62828" : "#B26A00";
+                Label(row, $"<color={color}><b>{r.Value}</b></color> <size=70%>{r.Unit}</size>", 30, Ink, TextAlignmentOptions.Right, false).GetComponent<LayoutElement>().preferredWidth = 260;
+            }
+            if (flagged.Count == 0) Label(lcol, Loc.T("pda.results.allNormal"), 30, Green, TextAlignmentOptions.Left, true, 50);
+            MakeButton(col, Loc.T("pda.results.open"), Blue, Color.white, 100, () =>
+            {
+                var panel = FindFirstObjectByType<HSE.Training.UI.BloodReportPanel>(FindObjectsInactive.Include);
+                if (panel) panel.Show(report);
+            });
+        }
+
+        /// <summary>Small line chart drawn with UI segments; the shaded band is the normal range.</summary>
+        void Chart(RectTransform col, string title, List<float> values, float min, float max, float normLo, float normHi, Color color)
+        {
+            const float w = 640f, hgt = 86f;
+            var box = Box(col, Card, hgt + 44);
+            var t = Label(box, $"<b>{title}</b>", 24, Muted, TextAlignmentOptions.TopLeft, false);
+            t.rectTransform.offsetMin = new Vector2(12, 0); t.rectTransform.offsetMax = new Vector2(-12, -4);
+            var area = new GameObject("Plot", typeof(RectTransform)).GetComponent<RectTransform>();
+            area.SetParent(box, false);
+            area.anchorMin = new Vector2(0, 0); area.anchorMax = new Vector2(1, 0);
+            area.pivot = new Vector2(0.5f, 0);
+            area.sizeDelta = new Vector2(-24, hgt);
+            area.anchoredPosition = new Vector2(0, 8);
+
+            var band = Box(area, new Color(color.r, color.g, color.b, 0.12f), 0);
+            band.anchorMin = new Vector2(0, Mathf.InverseLerp(min, max, normLo));
+            band.anchorMax = new Vector2(1, Mathf.InverseLerp(min, max, normHi));
+            band.offsetMin = band.offsetMax = Vector2.zero;
+
+            if (values.Count < 2) return;
+            Vector2 P(int i) => new Vector2(i / (float)(values.Count - 1) * w, Mathf.InverseLerp(min, max, values[i]) * hgt);
+            for (int i = 0; i < values.Count - 1; i++)
+            {
+                Vector2 a = P(i), b = P(i + 1), d = b - a;
+                var seg = Box(area, color, 0);
+                seg.anchorMin = seg.anchorMax = Vector2.zero;
+                seg.pivot = new Vector2(0, 0.5f);
+                seg.sizeDelta = new Vector2(d.magnitude, 4);
+                seg.anchoredPosition = a;
+                seg.localRotation = Quaternion.Euler(0, 0, Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg);
+            }
+            var last = Box(area, color, 0);
+            last.anchorMin = last.anchorMax = Vector2.zero;
+            last.sizeDelta = new Vector2(12, 12);
+            last.anchoredPosition = P(values.Count - 1);
         }
 
         void ShowOrder()

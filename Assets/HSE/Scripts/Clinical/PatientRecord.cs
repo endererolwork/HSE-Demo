@@ -31,6 +31,33 @@ namespace HSE.Clinical
         [Tooltip("Lab tests the physician ordered; the nurse's PDA request is checked against this list.")]
         public List<string> physicianOrderedTestIds = new List<string> { "CBC", "BIOCHEM", "CRP", "UA" };
 
+        [Header("Care board")]
+        [TextArea] public string problems = "Chest infection, on IV antibiotics";
+        public string diet = "Normal diet, encourage fluids";
+        public string mobility = "Independent with frame";
+        public string fallsRisk = "Low";
+
+        [Header("Vital sign baseline (the monitor wanders around these)")]
+        public float heartRate = 78;
+        public float spo2 = 97;
+        public float respRate = 16;
+        public float systolic = 124;
+        public float diastolic = 76;
+        public float temperature = 36.8f;
+        [Tooltip("Irregular heart rhythm (e.g. atrial fibrillation): more beat-to-beat variation.")]
+        public bool irregularRhythm;
+
+        [Header("Lab results this patient tends to produce (analyte code -> typical value)")]
+        public List<LabBias> labBias = new List<LabBias>();
+
+        [System.Serializable]
+        public struct LabBias
+        {
+            public string analyte;
+            public float value;
+            public LabBias(string a, float v) { analyte = a; value = v; }
+        }
+
         [Header("Appearance (applied to the patient figure)")]
         public Color skinTone = new Color(0.86f, 0.68f, 0.56f);
         public Color hairColor = new Color(0.2f, 0.14f, 0.1f);

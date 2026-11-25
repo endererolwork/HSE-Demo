@@ -150,6 +150,29 @@ namespace HSE.EditorTools
             // "Next patient" on the results screen restarts with a different patient.
             root.AddComponent<ScenarioSession>().Bind(runner, roster, pda, panel);
 
+            // Simulated lab, its report panel and AI comments.
+            root.AddComponent<HSE.Clinical.Lab.LabService>().Bind(AiSettings());
+            var report = new GameObject("BloodReport").AddComponent<BloodReportPanel>();
+            report.transform.SetParent(root.transform, false);
+
+            // Care board text and the live bedside monitor follow the patient in the bed.
+            var board = Find("CareBoard");
+            if (board)
+            {
+                var texts = board.GetComponentsInChildren<TMPro.TextMeshPro>(true);
+                var display = board.GetComponent<CareBoardDisplay>();
+                if (!display) display = board.gameObject.AddComponent<CareBoardDisplay>();
+                display.Bind(texts.FirstOrDefault(t => t.name == "Header"), texts.FirstOrDefault(t => t.name == "Body"));
+            }
+            var monitorRoot = Find("VitalsMonitor");
+            if (monitorRoot)
+            {
+                TMPro.TextMeshPro T(string n) => monitorRoot.GetComponentsInChildren<TMPro.TextMeshPro>(true).FirstOrDefault(t => t.name == n);
+                var vitals = monitorRoot.GetComponent<HSE.Clinical.Vitals.VitalsMonitorDisplay>();
+                if (!vitals) vitals = monitorRoot.gameObject.AddComponent<HSE.Clinical.Vitals.VitalsMonitorDisplay>();
+                vitals.Bind(T("Monitor_HR"), T("Monitor_SpO2"), T("Monitor_RR"), T("Monitor_NIBP"), T("Monitor_NIBPTime"), Find("ECGTrace"), TraceMaterial());
+            }
+
             EditorUtility.SetDirty(root);
             Debug.Log("[HSE] Scenario set up with " + runner.Steps.Count + " steps.");
         }
@@ -203,6 +226,33 @@ namespace HSE.EditorTools
             }
             h.highlighted = false;
             EditorUtility.SetDirty(h);
+        }
+
+        static HSE.Clinical.Lab.AiCommentSettings AiSettings()
+        {
+            const string path = "Assets/HSE/Data/AiCommentSettings.asset";
+            var a = AssetDatabase.LoadAssetAtPath<HSE.Clinical.Lab.AiCommentSettings>(path);
+            if (!a)
+            {
+                a = ScriptableObject.CreateInstance<HSE.Clinical.Lab.AiCommentSettings>();
+                AssetDatabase.CreateAsset(a, path);
+            }
+            return a;
+        }
+
+        static Material TraceMaterial()
+        {
+            const string path = "Assets/HSE/Materials/Guide/MonitorTrace.mat";
+            GuideMaterial("GuideArrow", new Color(1f, 0.78f, 0.1f, 1f), false); // folder
+            var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (!m)
+            {
+                m = new Material(Shader.Find("Universal Render Pipeline/Particles/Unlit"));
+                AssetDatabase.CreateAsset(m, path);
+            }
+            m.SetColor("_BaseColor", Color.white);
+            EditorUtility.SetDirty(m);
+            return m;
         }
 
         static Material GloveMaterial()

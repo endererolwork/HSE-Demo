@@ -13,6 +13,10 @@ namespace HSE.EditorTools
         struct Spec
         {
             public string File, Name, Dob, Mrn, Gender, Physician, Diagnosis, Blood, Allergies, Plan;
+            public string Problems, Diet, Mobility, Falls;
+            public float Hr, Spo2, Rr, Sys, Dia, Temp;
+            public bool Irregular;
+            public (string, float)[] Labs;
             public string[] Orders;
             public Color Skin, Hair, Gown;
         }
@@ -22,7 +26,11 @@ namespace HSE.EditorTools
             new Spec
             {
                 File = "Patient_PeterGlynne", Name = "Peter Glynne", Dob = "14.03.1958", Mrn = "20460718", Gender = "Male",
-                Physician = "Dr. Sarah Collins", Diagnosis = "Community-acquired pneumonia, day 3 of antibiotics",
+                Physician = "VR Doctor 1", Diagnosis = "Community-acquired pneumonia, day 3 of antibiotics",
+                Problems = "Right lower lobe pneumonia, IV antibiotics day 3. Needs 2 L/min oxygen. Productive cough.",
+                Diet = "Normal diet, encourage fluids", Mobility = "Independent", Falls = "Low",
+                Hr = 96, Spo2 = 94, Rr = 20, Sys = 118, Dia = 72, Temp = 38.1f,
+                Labs = new[] { ("WBC", 14.2f), ("CRP", 86f), ("UREA", 7.4f) },
                 Blood = "A Rh(+)", Allergies = "Penicillin",
                 Plan = "Morning bloods to review infection markers. Urinalysis. Vital signs every 4 hours.",
                 Orders = new[] { "CBC", "BIOCHEM", "CRP", "UA" },
@@ -31,7 +39,11 @@ namespace HSE.EditorTools
             new Spec
             {
                 File = "Patient_EnderErol", Name = "Ender Erol", Dob = "02.07.1994", Mrn = "20511342", Gender = "Male",
-                Physician = "Dr. James Patel", Diagnosis = "Type 1 diabetes, poorly controlled blood glucose",
+                Physician = "VR Doctor 2", Diagnosis = "Type 1 diabetes, poorly controlled blood glucose",
+                Problems = "High blood glucose for 3 days, insulin being adjusted. Check ketones. Hypo awareness.",
+                Diet = "Diabetic diet, carbohydrate counted", Mobility = "Independent", Falls = "Low",
+                Hr = 88, Spo2 = 98, Rr = 18, Sys = 128, Dia = 80, Temp = 36.9f,
+                Labs = new[] { ("GLU", 13.8f), ("K", 5.3f), ("UA_GLU", 2f), ("UA_KET", 1f) },
                 Blood = "0 Rh(+)", Allergies = "No known allergies",
                 Plan = "Fasting glucose and renal function before breakfast. Urinalysis for ketones.",
                 Orders = new[] { "GLU", "BIOCHEM", "CBC", "UA" },
@@ -40,7 +52,11 @@ namespace HSE.EditorTools
             new Spec
             {
                 File = "Patient_AliErol", Name = "Ali Erol", Dob = "21.11.1961", Mrn = "20398805", Gender = "Male",
-                Physician = "Dr. Sarah Collins", Diagnosis = "Atrial fibrillation on warfarin, INR monitoring",
+                Physician = "VR Doctor 1", Diagnosis = "Atrial fibrillation on warfarin, INR monitoring",
+                Problems = "Atrial fibrillation, fast rate at times. Warfarin: INR target 2-3. Bruising on arms - watch for bleeding.",
+                Diet = "Normal diet, consistent vitamin K", Mobility = "Walks with stick", Falls = "Medium",
+                Hr = 102, Spo2 = 96, Rr = 17, Sys = 136, Dia = 84, Temp = 36.7f, Irregular = true,
+                Labs = new[] { ("INR", 3.6f), ("PT", 31f), ("HGB", 118f) },
                 Blood = "B Rh(+)", Allergies = "Aspirin",
                 Plan = "Daily INR. Check full blood count and electrolytes. Watch for bleeding.",
                 Orders = new[] { "COAG", "CBC", "BIOCHEM" },
@@ -49,7 +65,11 @@ namespace HSE.EditorTools
             new Spec
             {
                 File = "Patient_MargaretHughes", Name = "Margaret Hughes", Dob = "09.05.1947", Mrn = "20277610", Gender = "Female",
-                Physician = "Dr. Laura Bennett", Diagnosis = "Urinary tract infection with fever",
+                Physician = "VR Doctor 3", Diagnosis = "Urinary tract infection with fever",
+                Problems = "Urinary infection with fever and new confusion at night. Reduced fluid intake. Kidney function to watch.",
+                Diet = "Soft diet, fluid chart 2 L/day", Mobility = "Assist x2, frame", Falls = "High",
+                Hr = 104, Spo2 = 95, Rr = 22, Sys = 104, Dia = 62, Temp = 38.6f,
+                Labs = new[] { ("WBC", 15.8f), ("CRP", 112f), ("CREA", 128f), ("UREA", 9.6f), ("UA_LEU", 3f), ("UA_NIT", 1f), ("UCULT", 1f) },
                 Blood = "AB Rh(-)", Allergies = "Sulfonamides",
                 Plan = "Urine sample before the next antibiotic dose. Blood cultures if temperature above 38.5 C.",
                 Orders = new[] { "CBC", "CRP", "UA", "UCULT", "BCULT" },
@@ -58,7 +78,11 @@ namespace HSE.EditorTools
             new Spec
             {
                 File = "Patient_SamuelOkafor", Name = "Samuel Okafor", Dob = "30.01.1979", Mrn = "20633157", Gender = "Male",
-                Physician = "Dr. James Patel", Diagnosis = "Jaundice, suspected liver disease",
+                Physician = "VR Doctor 2", Diagnosis = "Jaundice, suspected liver disease",
+                Problems = "Yellow skin and eyes, tired, itching. Liver scan booked. Watch for confusion and bleeding.",
+                Diet = "Low salt diet", Mobility = "Independent", Falls = "Low",
+                Hr = 84, Spo2 = 97, Rr = 16, Sys = 112, Dia = 70, Temp = 37.2f,
+                Labs = new[] { ("ALT", 186f), ("AST", 154f), ("ALP", 210f), ("BILI", 64f), ("INR", 1.6f), ("PLT", 118f) },
                 Blood = "0 Rh(-)", Allergies = "Latex (use nitrile gloves)",
                 Plan = "Liver function and clotting screen this morning. Monitor for confusion.",
                 Orders = new[] { "LFT", "COAG", "CBC" },
@@ -98,6 +122,15 @@ namespace HSE.EditorTools
                 p.skinTone = s.Skin;
                 p.hairColor = s.Hair;
                 p.gownColor = s.Gown;
+                p.problems = s.Problems;
+                p.diet = s.Diet;
+                p.mobility = s.Mobility;
+                p.fallsRisk = s.Falls;
+                p.heartRate = s.Hr; p.spo2 = s.Spo2; p.respRate = s.Rr;
+                p.systolic = s.Sys; p.diastolic = s.Dia; p.temperature = s.Temp;
+                p.irregularRhythm = s.Irregular;
+                p.labBias = new List<PatientRecord.LabBias>();
+                if (s.Labs != null) foreach (var (a, v) in s.Labs) p.labBias.Add(new PatientRecord.LabBias(a, v));
                 EditorUtility.SetDirty(p);
                 list.Add(p);
             }

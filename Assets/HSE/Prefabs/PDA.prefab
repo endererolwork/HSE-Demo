@@ -245,16 +245,18 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::HSE.Devices.PdaScanner
   laserOrigin: {fileID: 3258762182651748405}
+  app: {fileID: 3405838485834641727}
+  beamMaterial: {fileID: 2100000, guid: ea3fe01bf54e9e542bd853cf4a5f0ddc, type: 2}
   maxDistance: 0.6
-  aimRadius: 0.012
-  scanMask:
+  coneAngle: 14
+  occluderMask:
     serializedVersion: 2
     m_Bits: 4294967295
-  app: {fileID: 3405838485834641727}
-  beamColor: {r: 1, g: 0.08, b: 0.05, a: 0.85}
-  readColor: {r: 0.2, g: 1, b: 0.3, a: 0.9}
+  buttonScanSeconds: 3
+  laserLines: 7
+  beamColor: {r: 1, g: 0.05, b: 0.03, a: 1}
+  readColor: {r: 0.2, g: 1, b: 0.3, a: 1}
   rescanDelay: 1
-  beamMaterial: {fileID: 2100000, guid: ea3fe01bf54e9e542bd853cf4a5f0ddc, type: 2}
 --- !u!1 &2338099440920692014
 GameObject:
   m_ObjectHideFlags: 0
