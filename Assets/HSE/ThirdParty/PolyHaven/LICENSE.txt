@@ -1,0 +1,2 @@
+﻿Assets in this folder come from Poly Haven (https://polyhaven.com) and are licensed CC0 (public domain).
+interior_tiles, long_white_tiles, ceiling_interior, oak_veneer_01, fabric_leather_02 (1K textures), wheelchair_01 (1K model).

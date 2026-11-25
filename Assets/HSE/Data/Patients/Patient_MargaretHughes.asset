@@ -1,0 +1,77 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1eb7a73374fb0747b1462ab81033bc8, type: 3}
+  m_Name: Patient_MargaretHughes
+  m_EditorClassIdentifier: Assembly-CSharp::HSE.Clinical.PatientRecord
+  fullName: Margaret Hughes
+  dateOfBirth: 09.05.1947
+  medicalRecordNumber: 20277610
+  gender: Female
+  ward: Internal Medicine 2B
+  room: 204
+  bed: 1
+  attendingPhysician: VR Doctor 3
+  diagnosis: Urinary tract infection with fever
+  bloodType: AB Rh(-)
+  allergies: Sulfonamides
+  carePlan: Urine sample before the next antibiotic dose. Blood cultures if temperature
+    above 38.5 C.
+  physicianOrderedTestIds:
+  - CBC
+  - CRP
+  - UA
+  - UCULT
+  - BCULT
+  problems: Urinary infection with fever and new confusion at night. Reduced fluid
+    intake. Kidney function to watch.
+  diet: Soft diet, fluid chart 2 L/day
+  mobility: Assist x2, frame
+  fallsRisk: High
+  heartRate: 104
+  spo2: 95
+  respRate: 22
+  systolic: 104
+  diastolic: 62
+  temperature: 38.6
+  irregularRhythm: 0
+  labResults:
+  - analyte: WBC
+    value: 15.8
+  - analyte: HGB
+    value: 124
+  - analyte: PLT
+    value: 356
+  - analyte: CRP
+    value: 112
+  - analyte: UA_LEU
+    value: 3
+  - analyte: UA_NIT
+    value: 1
+  - analyte: UA_GLU
+    value: 0
+  - analyte: UA_KET
+    value: 0
+  - analyte: UA_PRO
+    value: 1
+  - analyte: UCULT
+    value: 1
+  - analyte: BCULT
+    value: 0
+  labComment: White cells (15.8) and CRP (112) are clearly raised, and the urine
+    shows leukocytes, nitrite and a trace of protein, with E. coli growing in the
+    urine culture. This fits a urinary tract infection, which can also explain the
+    new confusion at night. Blood cultures show no growth so far. Inform VR Doctor
+    3, keep the fluid chart, and watch temperature, blood pressure and confusion
+    closely.
+  skinTone: {r: 0.93, g: 0.78, b: 0.7, a: 1}
+  hairColor: {r: 0.9, g: 0.9, b: 0.88, a: 1}
+  gownColor: {r: 0.86, g: 0.72, b: 0.82, a: 1}
