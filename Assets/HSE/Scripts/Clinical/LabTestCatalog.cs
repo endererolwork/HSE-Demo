@@ -19,9 +19,11 @@ namespace HSE.Clinical
             _name = name; _nameTr = nameTr; _detail = detail; _detailTr = detailTr; _container = container; _containerTr = containerTr;
         }
 
-        public string Name => Loc.Pick(_name, _nameTr);
-        public string Detail => Loc.Pick(_detail, _detailTr);
-        public string Container => Loc.Pick(_container, _containerTr);
+        // Clinical data stays in English in every UI language; the Turkish names are kept for reference only.
+        public string Name => _name;
+        public string Detail => _detail;
+        public string Container => _container;
+        public string NameTr => _nameTr;
     }
 
     /// <summary>Tests the nurse can request from the PDA, with the sample container each one needs.</summary>

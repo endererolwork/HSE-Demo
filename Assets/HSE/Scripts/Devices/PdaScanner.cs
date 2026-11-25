@@ -1,4 +1,4 @@
-﻿using HSE.Clinical;
+using HSE.Clinical;
 using UnityEngine;
 using UnityEngine.XR.Interaction.Toolkit;
 using UnityEngine.XR.Interaction.Toolkit.Interactables;
@@ -16,12 +16,14 @@ namespace HSE.Devices
     {
         public Transform laserOrigin;
         public float maxDistance = 0.6f;
-        public float aimRadius = 0.012f;
+        public float aimRadius = 0.015f;
+        [Tooltip("Beam is on whenever the PDA is held (works with hand tracking, which has no trigger). Off = hold the trigger to scan.")]
+        public bool scanWhileHeld = true;
         public LayerMask scanMask = ~0;
         public PdaApp app;
 
         [Header("Feedback")]
-        public Color beamColor = new Color(1f, 0.08f, 0.05f, 0.85f);
+        public Color beamColor = new Color(1f, 0.05f, 0.03f, 1f);
         public Color readColor = new Color(0.2f, 1f, 0.3f, 0.9f);
         public float rescanDelay = 1.0f;
         [Tooltip("Additive unlit URP material for the beam. Assigned by the PDA builder so the shader is included in builds.")]
@@ -43,10 +45,10 @@ namespace HSE.Devices
         void Awake()
         {
             _grab = GetComponent<XRGrabInteractable>();
-            _grab.selectEntered.AddListener(a => _holder = a.interactorObject);
+            _grab.selectEntered.AddListener(a => { _holder = a.interactorObject; if (scanWhileHeld) SetScanning(true); });
             _grab.selectExited.AddListener(_ => { _holder = null; SetScanning(false); });
             _grab.activated.AddListener(_ => SetScanning(true));
-            _grab.deactivated.AddListener(_ => SetScanning(false));
+            _grab.deactivated.AddListener(_ => SetScanning(scanWhileHeld && _holder != null));
 
             if (!laserOrigin) laserOrigin = transform;
             BuildBeam();
@@ -108,8 +110,8 @@ namespace HSE.Devices
             _beam = go.AddComponent<LineRenderer>();
             _beam.positionCount = 2;
             _beam.useWorldSpace = true;
-            _beam.startWidth = 0.0025f;
-            _beam.endWidth = 0.0012f;
+            _beam.startWidth = 0.004f;
+            _beam.endWidth = 0.0025f;
             _beam.numCapVertices = 2;
             _beam.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             _beam.receiveShadows = false;
@@ -129,7 +131,7 @@ namespace HSE.Devices
             dot.name = "ScanDot";
             Destroy(dot.GetComponent<Collider>());
             dot.transform.SetParent(transform, false);
-            dot.transform.localScale = Vector3.one * 0.008f;
+            dot.transform.localScale = Vector3.one * 0.012f;
             var dotMat = new Material(mat);
             dotMat.SetColor("_BaseColor", beamColor);
             dot.GetComponent<MeshRenderer>().sharedMaterial = dotMat;

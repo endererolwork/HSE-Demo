@@ -92,6 +92,11 @@ namespace HSE.Devices
         }
 
         // ------------------------------------------------------------ screens
+        // Font sizes are in canvas units (720 wide = 68 mm), so 36 is about 3.4 mm tall on the device.
+
+        enum PatientTab { Details, Orders }
+        PatientTab _patientTab = PatientTab.Details;
+        SampleType _orderTab = SampleType.Blood;
 
         void ShowHome(string status)
         {
@@ -102,92 +107,123 @@ namespace HSE.Devices
 
         void ShowPatient()
         {
-            Clear(_patientScreen);
             _redraw = ShowPatient;
+            Clear(_patientScreen);
             SetScreen(_patientScreen, Loc.T("pda.title.patient"));
             var p = _patient;
-            var col = Column(_patientScreen, 24, 18);
+            var col = Column(_patientScreen, 22, 14);
 
-            var card = CardBox(col, 0);
-            var cardCol = Column(card, 24, 6);
-            Label(cardCol, p.fullName, 52, Ink, TextAlignmentOptions.Left, true, 64);
-            Label(cardCol, Loc.F("pda.age", p.Age, p.Gender, p.bloodType), 30, Muted, TextAlignmentOptions.Left, false, 40);
+            var tabs = HRow(col, 92, 10);
+            Tab(tabs, Loc.T("pda.tab.patient"), _patientTab == PatientTab.Details, () => { _patientTab = PatientTab.Details; ShowPatient(); });
+            Tab(tabs, Loc.T("pda.tab.orders"), _patientTab == PatientTab.Orders, () => { _patientTab = PatientTab.Orders; ShowPatient(); });
 
-            var info = CardBox(col, 0);
-            var infoCol = Column(info, 20, 4);
-            Row(infoCol, Loc.T("pda.mrn"), p.medicalRecordNumber);
-            Row(infoCol, Loc.T("pda.dob"), p.dateOfBirth);
-            Row(infoCol, Loc.T("pda.ward"), p.Ward);
-            Row(infoCol, Loc.T("pda.roomBed"), $"{p.room} / {p.bed}");
-            Row(infoCol, Loc.T("pda.diagnosis"), p.Diagnosis, 84);
-            Row(infoCol, Loc.T("pda.physician"), p.attendingPhysician);
+            var card = Box(col, Card, 0);
+            var cardCol = Column(card, 20, 4);
+            Label(cardCol, p.fullName, 58, Ink, TextAlignmentOptions.Left, true, 72);
+            Label(cardCol, Loc.F("pda.age", p.Age, p.Gender, p.bloodType), 32, Muted, TextAlignmentOptions.Left, false, 44);
 
-            var allergy = Box(col, RedLight, 64);
-            Label(allergy, Loc.T("pda.allergy") + "  " + p.Allergies, 32, Red, TextAlignmentOptions.Center, true);
+            if (_patientTab == PatientTab.Details)
+            {
+                var info = Box(col, Card, 0);
+                var infoCol = Column(info, 18, 2);
+                Row(infoCol, Loc.T("pda.mrn"), p.medicalRecordNumber);
+                Row(infoCol, Loc.T("pda.dob"), p.dateOfBirth);
+                Row(infoCol, Loc.T("pda.ward"), p.Ward, 96);
+                Row(infoCol, Loc.T("pda.roomBed"), $"{p.room} / {p.bed}");
+                Row(infoCol, Loc.T("pda.diagnosis"), p.Diagnosis, 120);
+                Row(infoCol, Loc.T("pda.physician"), p.attendingPhysician);
 
-            var plan = CardBox(col, 0);
-            var planCol = Column(plan, 20, 6);
-            Label(planCol, Loc.T("pda.carePlan"), 24, Muted, TextAlignmentOptions.Left, true, 30);
-            Label(planCol, p.CarePlan, 28, Ink, TextAlignmentOptions.Left, false, 76);
-            Label(planCol, Loc.T("pda.physicianOrder"), 24, Muted, TextAlignmentOptions.Left, true, 30);
-            var ordered = string.Join(", ", p.physicianOrderedTestIds.Select(id => LabTestCatalog.Get(id)?.Name ?? id));
-            Label(planCol, ordered, 28, Ink, TextAlignmentOptions.Left, false, 76);
+                var allergy = Box(col, RedLight, 84);
+                Label(allergy, Loc.T("pda.allergy") + "  " + p.Allergies, 36, Red, TextAlignmentOptions.Center, true);
+            }
+            else
+            {
+                var plan = Box(col, Card, 0);
+                var planCol = Column(plan, 20, 6);
+                Label(planCol, Loc.T("pda.carePlan"), 28, Muted, TextAlignmentOptions.Left, true, 38);
+                Label(planCol, p.CarePlan, 34, Ink, TextAlignmentOptions.Left, false, 130);
+
+                var orders = Box(col, Card, 0);
+                var ordersCol = Column(orders, 20, 6);
+                Label(ordersCol, Loc.T("pda.physicianOrder"), 28, Muted, TextAlignmentOptions.Left, true, 38);
+                foreach (var id in p.physicianOrderedTestIds)
+                {
+                    var t = LabTestCatalog.Get(id);
+                    if (t == null) continue;
+                    var r = HRow(ordersCol, 58, 14);
+                    Dot(r, t.ContainerColor, 30);
+                    Label(r, t.Name, 34, Ink, TextAlignmentOptions.Left, false).GetComponent<LayoutElement>().flexibleWidth = 1;
+                }
+            }
 
             Spacer(col);
             if (_identityConfirmed)
             {
-                var done = Box(col, BlueLight, 70);
-                Label(done, Loc.T("pda.identityConfirmed"), 32, Green, TextAlignmentOptions.Center, true);
+                var done = Box(col, BlueLight, 80);
+                Label(done, Loc.T("pda.identityConfirmed"), 36, Green, TextAlignmentOptions.Center, true);
             }
             else
             {
-                MakeButton(col, Loc.T("pda.confirmIdentity"), Green, Color.white, 96, () =>
+                MakeButton(col, Loc.T("pda.confirmIdentity"), Green, Color.white, 112, () =>
                 {
                     _identityConfirmed = true;
                     ClinicalEvents.RaiseIdentityConfirmed(_patient);
                     ShowPatient();
                 });
             }
-            var nav = HRow(col, 96, 16);
-            MakeButton(nav, Loc.T("pda.home"), Line, Ink, 96, () => ShowHome(null));
-            var order = MakeButton(nav, Loc.T("pda.labRequest"), Blue, Color.white, 96, ShowOrder);
+            var nav = HRow(col, 112, 14);
+            MakeButton(nav, Loc.T("pda.home"), Line, Ink, 112, () => ShowHome(null));
+            var order = MakeButton(nav, Loc.T("pda.labRequest"), Blue, Color.white, 112, () => { _orderTab = SampleType.Blood; ShowOrder(); });
             order.interactable = _identityConfirmed;
         }
 
         void ShowOrder()
         {
-            Clear(_orderScreen);
             _redraw = ShowOrder;
+            Clear(_orderScreen);
             SetScreen(_orderScreen, Loc.T("pda.title.order"));
-            var col = Column(_orderScreen, 20, 8);
-            Label(col, $"{_patient.fullName}  ·  {_patient.medicalRecordNumber}", 28, Muted, TextAlignmentOptions.Left, false, 40);
+            var col = Column(_orderScreen, 20, 10);
+            Label(col, $"{_patient.fullName}  ·  {_patient.medicalRecordNumber}", 30, Muted, TextAlignmentOptions.Left, false, 42);
 
-            TextMeshProUGUI warning = null;
+            // One page per sample type keeps the rows big enough to hit in VR.
+            var tabs = HRow(col, 92, 10);
             foreach (SampleType sample in Enum.GetValues(typeof(SampleType)))
             {
-                var tests = LabTestCatalog.All.Where(t => t.Sample == sample).ToList();
-                if (tests.Count == 0) continue;
-                Label(col, LabTestCatalog.SampleLabel(sample), 26, Blue, TextAlignmentOptions.Left, true, 40);
-                foreach (var t in tests) TestRow(col, t, () => { if (warning) warning.text = ""; });
+                int count = LabTestCatalog.All.Count(t => t.Sample == sample && _selected.Contains(t.Id));
+                var label = LabTestCatalog.SampleLabel(sample) + (count > 0 ? $" ({count})" : "");
+                var captured = sample;
+                Tab(tabs, label, _orderTab == sample, () => { _orderTab = captured; ShowOrder(); });
             }
 
-            var seg = HRow(col, 78, 12);
-            Label(seg, Loc.T("pda.priority"), 30, Ink, TextAlignmentOptions.Left, true).GetComponent<LayoutElement>().preferredWidth = 150;
+            TextMeshProUGUI warning = null;
+            TextMeshProUGUI selectedCount = null;
+            foreach (var t in LabTestCatalog.All.Where(t => t.Sample == _orderTab))
+                TestRow(col, t, () =>
+                {
+                    if (warning) warning.text = "";
+                    if (selectedCount) selectedCount.text = Loc.F("pda.selected", _selected.Count);
+                });
+
+            Spacer(col);
+            selectedCount = Label(col, Loc.F("pda.selected", _selected.Count), 30, Muted, TextAlignmentOptions.Left, true, 44);
+
+            var seg = HRow(col, 86, 12);
+            Label(seg, Loc.T("pda.priority"), 32, Ink, TextAlignmentOptions.Left, true).GetComponent<LayoutElement>().preferredWidth = 170;
             Button routine = null, urgent = null;
             void Paint()
             {
                 PaintButton(routine, !_urgent ? Blue : Line, !_urgent ? Color.white : Ink);
                 PaintButton(urgent, _urgent ? Red : Line, _urgent ? Color.white : Ink);
             }
-            routine = MakeButton(seg, Loc.T("pda.routine"), Line, Ink, 70, () => { _urgent = false; Paint(); });
-            urgent = MakeButton(seg, Loc.T("pda.urgent"), Line, Ink, 70, () => { _urgent = true; Paint(); });
+            routine = MakeButton(seg, Loc.T("pda.routine"), Line, Ink, 86, () => { _urgent = false; Paint(); });
+            urgent = MakeButton(seg, Loc.T("pda.urgent"), Line, Ink, 86, () => { _urgent = true; Paint(); });
             Paint();
 
-            warning = Label(col, "", 26, Red, TextAlignmentOptions.Center, true, 70);
+            warning = Label(col, "", 28, Red, TextAlignmentOptions.Center, true, 84);
 
-            var nav = HRow(col, 96, 16);
-            MakeButton(nav, Loc.T("pda.back"), Line, Ink, 96, ShowPatient);
-            MakeButton(nav, Loc.T("pda.send"), Blue, Color.white, 96, () =>
+            var nav = HRow(col, 112, 14);
+            MakeButton(nav, Loc.T("pda.back"), Line, Ink, 112, ShowPatient);
+            MakeButton(nav, Loc.T("pda.send"), Blue, Color.white, 112, () =>
             {
                 var problem = Validate();
                 if (problem != null)
@@ -202,10 +238,10 @@ namespace HSE.Devices
 
         void ShowConfirm()
         {
-            Clear(_confirmScreen);
             _redraw = ShowConfirm;
+            Clear(_confirmScreen);
             SetScreen(_confirmScreen, Loc.T("pda.title.sent"));
-            var col = Column(_confirmScreen, 28, 14);
+            var col = Column(_confirmScreen, 26, 14);
 
             var badgeRow = HRow(col, 150, 0);
             var badgeHolder = new GameObject("Badge", typeof(RectTransform), typeof(LayoutElement)).GetComponent<RectTransform>();
@@ -216,25 +252,25 @@ namespace HSE.Devices
             circle.sizeDelta = new Vector2(140, 140);
             Check(circle);
 
-            Label(col, Loc.T("pda.sent.headline"), 40, Ink, TextAlignmentOptions.Center, true, 56);
-            var refBox = Box(col, BlueLight, 110);
+            Label(col, Loc.T("pda.sent.headline"), 42, Ink, TextAlignmentOptions.Center, true, 110);
+            var refBox = Box(col, BlueLight, 120);
             var refCol = Column(refBox, 10, 0);
-            Label(refCol, Loc.T("pda.sent.ref"), 24, Muted, TextAlignmentOptions.Center, false, 32);
-            Label(refCol, _lastOrder.Reference, 44, Navy, TextAlignmentOptions.Center, true, 56);
-            Label(col, $"{_lastOrder.Time:dd.MM.yyyy HH:mm}  ·  {(_lastOrder.Urgent ? "<color=#D23B3B><b>" + Loc.T("pda.urgent") + "</b></color>" : Loc.T("pda.routine"))}", 28, Muted, TextAlignmentOptions.Center, false, 40);
+            Label(refCol, Loc.T("pda.sent.ref"), 28, Muted, TextAlignmentOptions.Center, false, 36);
+            Label(refCol, _lastOrder.Reference, 48, Navy, TextAlignmentOptions.Center, true, 60);
+            Label(col, $"{_lastOrder.Time:dd.MM.yyyy HH:mm}  ·  {(_lastOrder.Urgent ? "<color=#D23B3B><b>" + Loc.T("pda.urgent") + "</b></color>" : Loc.T("pda.routine"))}", 32, Muted, TextAlignmentOptions.Center, false, 46);
 
-            var list = CardBox(col, 0);
+            var list = Box(col, Card, 0);
             var listCol = Column(list, 18, 4);
             foreach (var t in _lastOrder.Tests)
             {
-                var r = HRow(listCol, 48, 12);
-                Dot(r, t.ContainerColor, 26);
-                var name = Label(r, $"{t.Name}  <color=#6B7685><size=80%>{t.Container}</size></color>", 26, Ink, TextAlignmentOptions.Left, false);
+                var r = HRow(listCol, 56, 14);
+                Dot(r, t.ContainerColor, 30);
+                var name = Label(r, $"{t.Name}  <color=#6B7685><size=75%>{t.Container}</size></color>", 32, Ink, TextAlignmentOptions.Left, false);
                 name.GetComponent<LayoutElement>().flexibleWidth = 1;
             }
-            Label(col, Loc.T("pda.sent.next"), 26, Muted, TextAlignmentOptions.Center, false, 70);
+            Label(col, Loc.T("pda.sent.next"), 30, Muted, TextAlignmentOptions.Center, false, 90);
             Spacer(col);
-            MakeButton(col, Loc.T("pda.home"), Blue, Color.white, 96, () => ShowHome(null));
+            MakeButton(col, Loc.T("pda.home"), Blue, Color.white, 112, () => ShowHome(null));
         }
 
         // ------------------------------------------------------------ order logic
@@ -300,7 +336,7 @@ namespace HSE.Devices
 
             var header = Box(_canvas, Blue, 0);
             Dock(header, true, 56, 104);
-            _title = Label(header, "", 42, Color.white, TextAlignmentOptions.Left, true);
+            _title = Label(header, "", 46, Color.white, TextAlignmentOptions.Left, true);
             Pad(_title.rectTransform, 28, 0);
 
             _body = new GameObject("Body", typeof(RectTransform)).GetComponent<RectTransform>();
@@ -324,9 +360,9 @@ namespace HSE.Devices
             holder.SetParent(frameRow, false);
             holder.GetComponent<LayoutElement>().preferredHeight = 300;
             ScanFrame(holder);
-            Label(col, Loc.T("pda.scan.headline"), 46, Ink, TextAlignmentOptions.Center, true, 70);
-            Label(col, Loc.T("pda.scan.help"), 30, Muted, TextAlignmentOptions.Center, false, 90);
-            _homeStatus = Label(col, "", 28, Ink, TextAlignmentOptions.Center, false, 80);
+            Label(col, Loc.T("pda.scan.headline"), 52, Ink, TextAlignmentOptions.Center, true, 140);
+            Label(col, Loc.T("pda.scan.help"), 36, Muted, TextAlignmentOptions.Center, false, 150);
+            _homeStatus = Label(col, "", 34, Ink, TextAlignmentOptions.Center, false, 100);
             Spacer(col);
         }
 
@@ -355,7 +391,7 @@ namespace HSE.Devices
         void TestRow(RectTransform parent, LabTest t, Action changed)
         {
             var row = Box(parent, Card, 0);
-            row.gameObject.AddComponent<LayoutElement>().preferredHeight = 68;
+            row.gameObject.AddComponent<LayoutElement>().preferredHeight = 94;
             var h = row.gameObject.AddComponent<HorizontalLayoutGroup>();
             h.padding = new RectOffset(16, 16, 8, 8);
             h.spacing = 14;
@@ -366,15 +402,15 @@ namespace HSE.Devices
 
             var box = Box(row, Color.white, 0);
             var boxLe = box.gameObject.AddComponent<LayoutElement>();
-            boxLe.preferredWidth = 44; boxLe.preferredHeight = 44; boxLe.flexibleHeight = 0;
+            boxLe.preferredWidth = 56; boxLe.preferredHeight = 56; boxLe.flexibleHeight = 0;
             var border = box.gameObject.AddComponent<Outline>();
             border.effectColor = Muted; border.effectDistance = new Vector2(2, -2);
             var tick = Box(box, Blue, 0);
-            Fill(tick); tick.offsetMin = new Vector2(7, 7); tick.offsetMax = new Vector2(-7, -7);
+            Fill(tick); tick.offsetMin = new Vector2(9, 9); tick.offsetMax = new Vector2(-9, -9);
 
-            var label = Label(row, t.Name, 28, Ink, TextAlignmentOptions.Left, false);
+            var label = Label(row, t.Name, 34, Ink, TextAlignmentOptions.Left, false);
             label.GetComponent<LayoutElement>().flexibleWidth = 1;
-            Dot(row, t.ContainerColor, 26);
+            Dot(row, t.ContainerColor, 34);
 
             void Refresh()
             {
@@ -393,11 +429,17 @@ namespace HSE.Devices
             Refresh();
         }
 
-        void Row(RectTransform parent, string label, string value, float height = 50)
+        void Row(RectTransform parent, string label, string value, float height = 62)
         {
             var r = HRow(parent, height, 12);
-            Label(r, label, 26, Muted, TextAlignmentOptions.Left, false).GetComponent<LayoutElement>().preferredWidth = 210;
-            Label(r, value, 28, Ink, TextAlignmentOptions.Left, true).GetComponent<LayoutElement>().flexibleWidth = 1;
+            Label(r, label, 30, Muted, TextAlignmentOptions.Left, false).GetComponent<LayoutElement>().preferredWidth = 230;
+            Label(r, value, 33, Ink, TextAlignmentOptions.Left, true).GetComponent<LayoutElement>().flexibleWidth = 1;
+        }
+
+        static void Tab(RectTransform parent, string label, bool active, UnityAction onClick)
+        {
+            var b = MakeButton(parent, label, active ? Blue : Line, active ? Color.white : Ink, 92, onClick);
+            b.GetComponentInChildren<TextMeshProUGUI>().fontSize = 32;
         }
 
         static RectTransform Column(RectTransform parent, int pad, float spacing)
@@ -474,7 +516,7 @@ namespace HSE.Devices
             colors.disabledColor = new Color(1, 1, 1, 0.35f);
             b.colors = colors;
             b.onClick.AddListener(onClick);
-            Label(rt, label, 34, fg, TextAlignmentOptions.Center, true);
+            Label(rt, label, 38, fg, TextAlignmentOptions.Center, true);
             return b;
         }
 

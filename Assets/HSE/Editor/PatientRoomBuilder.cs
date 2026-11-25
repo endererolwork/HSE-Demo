@@ -22,7 +22,9 @@ namespace HSE.EditorTools
         const string TexDir = Root + "/Textures";
         const string SceneDir = Root + "/Scenes";
         const string ScenePath = SceneDir + "/PatientRoom.unity";
-        const string XrRigPath = "Assets/VRTemplateAssets/Prefabs/Setup/Complete XR Origin Set Up Variant.prefab";
+        // Hands variant: tracked hands with pinch/grab and poke, switching to controllers automatically when they are picked up.
+        const string XrRigPath = "Assets/VRTemplateAssets/Prefabs/Setup/Complete XR Origin Set Up Hands Variant.prefab";
+        const string XrRigFallback = "Assets/VRTemplateAssets/Prefabs/Setup/Complete XR Origin Set Up Variant.prefab";
 
         // Room interior: x -3..3, z -2.5..2.5, height 2.9. North (+z) is the bed's headwall.
         const float RoomW = 6f, RoomD = 5f, RoomH = 2.9f, WallT = 0.1f;
@@ -721,7 +723,7 @@ namespace HSE.EditorTools
 
         static void BuildPlayer()
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(XrRigPath);
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(XrRigPath) ?? AssetDatabase.LoadAssetAtPath<GameObject>(XrRigFallback);
             if (prefab == null)
             {
                 Debug.LogWarning("[HSE] XR rig prefab not found at " + XrRigPath + ". Add the template's XR Origin manually.");

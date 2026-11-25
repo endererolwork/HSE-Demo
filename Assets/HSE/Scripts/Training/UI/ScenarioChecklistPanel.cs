@@ -22,12 +22,36 @@ namespace HSE.Training.UI
         [SerializeField] Vector3 attachEuler = new Vector3(35f, 0f, 0f);
         [SerializeField] Vector2 sizeMeters = new Vector2(0.16f, 0.2f);
         [SerializeField, Min(0.5f)] float mistakeShowSeconds = 3.5f;
+        [Tooltip("The list opens at the start (and on mistakes), then folds into a small \"Tasks\" tab after this many seconds. It opens again with the results.")]
+        [SerializeField, Min(0f)] float autoHideSeconds = 10f;
 
-        static readonly string[] ControllerNames = { "Left Controller", "LeftHand Controller", "Left Hand Controller", "XR Controller Left", "Left Hand" };
+        static readonly string[] ControllerNames = { "Left Controller", "Left Hand", "LeftHand Controller", "Left Hand Controller", "XR Controller Left" };
 
         const float Width = 640f;
-        TextMeshProUGUI _header, _instruction, _list, _toast;
+        TextMeshProUGUI _header, _instruction, _list, _toast, _tabText;
+        RectTransform _bodyRoot, _tabRoot;
         float _toastUntil;
+        float _hideAt = float.MaxValue;
+        bool _expanded = true;
+
+        public bool IsExpanded => _expanded;
+
+        /// <summary>Opens the full list. With autoHide it folds back into the tab after a while.</summary>
+        public void Expand(bool autoHide = true)
+        {
+            _expanded = true;
+            _bodyRoot.gameObject.SetActive(true);
+            _tabRoot.gameObject.SetActive(false);
+            _hideAt = autoHide && autoHideSeconds > 0 ? Time.time + autoHideSeconds : float.MaxValue;
+        }
+
+        public void Collapse()
+        {
+            _expanded = false;
+            _bodyRoot.gameObject.SetActive(false);
+            _tabRoot.gameObject.SetActive(true);
+            _hideAt = float.MaxValue;
+        }
 
         public void Bind(ScenarioRunner scenario) => runner = scenario;
 
@@ -59,51 +83,64 @@ namespace HSE.Training.UI
         }
 
         float _nextSearch;
-        bool _attached;
 
         void Start()
         {
             TryAttach();
             if (runner && runner.IsRunning) Redraw();
+            else
+            {
+                Collapse();
+                _tabText.text = Loc.F("checklist.tab", 0, runner ? runner.MandatorySteps.Count() : 0);
+            }
         }
 
-        // Controllers can be switched on a little after the scene starts (input modality manager), so keep looking.
+        // Follows whichever left hand is live: the controller, or the tracked hand when controllers are put down.
         void TryAttach()
         {
-            if (_attached) return;
-            if (!attachTo) attachTo = FindController();
-            if (!attachTo) return;
-            transform.SetParent(attachTo, false);
+            var parent = transform.parent;
+            bool onHand = parent && (parent == attachTo || System.Array.IndexOf(ControllerNames, parent.name) >= 0);
+            if (onHand && parent.gameObject.activeInHierarchy) return;
+            var target = attachTo && attachTo.gameObject.activeInHierarchy ? attachTo : FindController();
+            if (!target || target == parent) return;
+            transform.SetParent(target, false);
             transform.localPosition = attachOffset;
             transform.localRotation = Quaternion.Euler(attachEuler);
-            _attached = true;
         }
 
         void Update()
         {
-            if (!_attached && Time.time >= _nextSearch)
+            if (Time.time >= _nextSearch)
             {
                 _nextSearch = Time.time + 1f;
                 TryAttach();
             }
+            if (_expanded && Time.time >= _hideAt) Collapse();
             if (_toast && !string.IsNullOrEmpty(_toast.text) && Time.time > _toastUntil) _toast.text = "";
         }
 
         // ------------------------------------------------------------ runner events
 
-        void OnStarted(ScenarioRunner _) => Redraw();
+        void OnStarted(ScenarioRunner _)
+        {
+            Redraw();
+            Expand(autoHide: true);
+        }
         void OnChanged(ScenarioStep _) => Redraw();
 
         void OnMistake(ScenarioStep step, string message)
         {
             _toast.text = $"<b>{Loc.T("checklist.mistake")}</b> {message}";
             _toastUntil = Time.time + mistakeShowSeconds;
+            if (!_expanded) Expand(autoHide: true);
         }
 
         void OnFinished(ScenarioReport report)
         {
             var t = report.TotalTime;
             _finished = report;
+            Expand(autoHide: false);
+            _tabText.text = Loc.T("checklist.done");
             _header.text = $"<b>{ScenarioTitle}</b>  ·  {Loc.T("checklist.done")}";
             _instruction.text = Loc.T("checklist.results");
             _list.text =
@@ -125,6 +162,7 @@ namespace HSE.Training.UI
             var mandatory = runner.MandatorySteps.ToList();
             int done = mandatory.Count(s => s.State == StepState.Completed || s.State == StepState.Skipped);
             _header.text = $"<b>{ScenarioTitle}</b>  ·  {done}/{mandatory.Count}";
+            _tabText.text = Loc.F("checklist.tab", done, mandatory.Count);
 
             var current = runner.CurrentStep;
             _instruction.text = current ? $"<b>{StepText.Title(current)}</b>\n<size=80%>{StepText.Instruction(current)}</size>" : "";
@@ -168,16 +206,48 @@ namespace HSE.Training.UI
             var canvas = canvasGo.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
             canvasGo.GetComponent<CanvasScaler>().dynamicPixelsPerUnit = 4;
-            var rt = (RectTransform)canvasGo.transform;
-            rt.sizeDelta = new Vector2(Width, height);
-            rt.localScale = Vector3.one * (sizeMeters.x / Width);
+            var raycaster = System.Type.GetType("UnityEngine.XR.Interaction.Toolkit.UI.TrackedDeviceGraphicRaycaster, Unity.XR.Interaction.Toolkit");
+            if (raycaster != null) canvasGo.AddComponent(raycaster);
+            canvasGo.AddComponent<GraphicRaycaster>();
+            var canvasRt = (RectTransform)canvasGo.transform;
+            canvasRt.sizeDelta = new Vector2(Width, height);
+            canvasRt.localScale = Vector3.one * (sizeMeters.x / Width);
+
+            // Folded state: a small tab at the bottom that opens the list.
+            _tabRoot = Panel(canvasRt, new Color(0.12f, 0.37f, 0.75f, 0.95f));
+            _tabRoot.anchorMin = _tabRoot.anchorMax = new Vector2(0.5f, 0f);
+            _tabRoot.pivot = new Vector2(0.5f, 0f);
+            _tabRoot.sizeDelta = new Vector2(380, 96);
+            _tabRoot.anchoredPosition = Vector2.zero;
+            _tabRoot.GetComponent<Image>().raycastTarget = true;
+            _tabRoot.gameObject.AddComponent<Button>().onClick.AddListener(() => Expand(autoHide: false));
+            _tabText = Text(_tabRoot, 34, Color.white, TextAlignmentOptions.Center);
+            _tabText.fontStyle = FontStyles.Bold;
+            Stretch(_tabText.rectTransform, 8, 0, 8, 0);
+            _tabRoot.gameObject.SetActive(false);
+
+            _bodyRoot = new GameObject("Body", typeof(RectTransform)).GetComponent<RectTransform>();
+            _bodyRoot.SetParent(canvasRt, false);
+            Stretch(_bodyRoot, 0, 0, 0, 0);
+            var rt = _bodyRoot;
 
             var bg = Panel(rt, new Color(0.07f, 0.1f, 0.15f, 0.88f));
             Stretch(bg, 0, 0, 0, 0);
             var head = Panel(rt, new Color(0.12f, 0.37f, 0.75f, 0.95f));
             Top(head, 0, 70);
             _header = Text(head, 30, Color.white, TextAlignmentOptions.MidlineLeft);
-            Stretch(_header.rectTransform, 22, 0, 22, 0);
+            Stretch(_header.rectTransform, 22, 0, 90, 0);
+
+            var close = Panel(head, new Color(1, 1, 1, 0.15f));
+            close.anchorMin = close.anchorMax = new Vector2(1f, 0.5f);
+            close.pivot = new Vector2(1f, 0.5f);
+            close.sizeDelta = new Vector2(70, 58);
+            close.anchoredPosition = new Vector2(-8, 0);
+            close.GetComponent<Image>().raycastTarget = true;
+            close.gameObject.AddComponent<Button>().onClick.AddListener(Collapse);
+            var x = Text(close, 40, Color.white, TextAlignmentOptions.Center);
+            x.text = "×";
+            Stretch(x.rectTransform, 0, 0, 0, 0);
 
             var instr = Panel(rt, new Color(1, 1, 1, 0.08f));
             Top(instr, 82, 150);
@@ -242,6 +312,11 @@ namespace HSE.Training.UI
         static Transform FindController()
         {
             var all = FindObjectsByType<Transform>(FindObjectsInactive.Include, FindObjectsSortMode.None);
+            foreach (var n in ControllerNames)
+            {
+                var t = all.FirstOrDefault(x => x.name == n && x.gameObject.activeInHierarchy);
+                if (t) return t;
+            }
             foreach (var n in ControllerNames)
             {
                 var t = all.FirstOrDefault(x => x.name == n);

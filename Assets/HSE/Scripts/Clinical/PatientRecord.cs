@@ -1,53 +1,49 @@
 using System.Collections.Generic;
-using HSE.Localization;
 using UnityEngine;
 
 namespace HSE.Clinical
 {
-    /// <summary>Electronic patient record shown on the PDA after a wristband scan. Fictional training data only.</summary>
+    /// <summary>
+    /// Electronic patient record shown on the PDA after a wristband scan. Fictional training data.
+    /// Clinical data is always in English, whatever UI language is picked.
+    /// </summary>
     [CreateAssetMenu(menuName = "HSE/Patient Record", fileName = "Patient")]
     public class PatientRecord : ScriptableObject
     {
         [Header("Identity (printed on the wristband)")]
-        public string fullName = "Mehmet Kaya";
+        public string fullName = "Peter Glynne";
         public string dateOfBirth = "14.03.1958";
         public string medicalRecordNumber = "20460718";
         public string gender = "Male";
-        public string genderTr = "Erkek";
 
         [Header("Admission")]
         public string ward = "Internal Medicine 2B";
-        public string wardTr = "Dahiliye 2B";
         public string room = "204";
         public string bed = "1";
         public string attendingPhysician = "Dr. Elif Demir";
         public string diagnosis = "Community-acquired pneumonia, follow-up";
-        public string diagnosisTr = "Toplum kökenli pnömoni, takip";
 
         [Header("Clinical")]
         public string bloodType = "A Rh(+)";
         public string allergies = "Penicillin";
-        public string allergiesTr = "Penisilin";
         [TextArea] public string carePlan = "Morning blood and urine tests. Vital signs every 4 hours.";
-        [TextArea] public string carePlanTr = "Sabah kan ve idrar tahlilleri. Vital bulgular 4 saatte bir.";
 
         [Tooltip("Lab tests the physician ordered; the nurse's PDA request is checked against this list.")]
         public List<string> physicianOrderedTestIds = new List<string> { "CBC", "BIOCHEM", "CRP", "UA" };
 
-        // Text in the language picked at the room entrance.
-        public string Gender => Loc.Pick(gender, genderTr);
-        public string Ward => Loc.Pick(ward, wardTr);
-        public string Diagnosis => Loc.Pick(diagnosis, diagnosisTr);
-        public string Allergies => Loc.Pick(allergies, allergiesTr);
-        public string CarePlan => Loc.Pick(carePlan, carePlanTr);
+        [Header("Appearance (applied to the patient figure)")]
+        public Color skinTone = new Color(0.86f, 0.68f, 0.56f);
+        public Color hairColor = new Color(0.2f, 0.14f, 0.1f);
+        public Color gownColor = new Color(0.62f, 0.76f, 0.88f);
 
-        /// <summary>Resets the asset to the default training patient (used by the scene builder).</summary>
-        public void ResetToDefaults()
-        {
-            var fresh = CreateInstance<PatientRecord>();
-            JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(fresh), this);
-            DestroyImmediate(fresh);
-        }
+        public string Gender => gender;
+        public string Ward => ward;
+        public string Diagnosis => diagnosis;
+        public string Allergies => allergies;
+        public string CarePlan => carePlan;
+
+        /// <summary>Code printed on this patient's wristband QR.</summary>
+        public string WristbandCode => "HSE-PT-" + medicalRecordNumber;
 
         public int Age
         {

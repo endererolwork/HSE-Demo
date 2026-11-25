@@ -5,6 +5,7 @@ using HSE.Scenario;
 using HSE.Scenario.PrismFX;
 using PrismFX;
 using HSE.Training.Steps;
+using HSE.Training;
 using HSE.Training.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -40,12 +41,7 @@ namespace HSE.EditorTools
             var root = new GameObject("Scenario");
             var runner = root.AddComponent<ScenarioRunner>();
             var highlighter = root.AddComponent<PrismHighlightService>();
-            var patient = AssetDatabase.LoadAssetAtPath<PatientRecord>(PatientPath);
-            if (patient)
-            {
-                patient.ResetToDefaults(); // English + Turkish fields
-                EditorUtility.SetDirty(patient);
-            }
+            var patients = PatientLibrary.CreateOrUpdate();
 
             var pda = Object.FindFirstObjectByType<PdaApp>();
             var pdaGrab = pda ? pda.GetComponent<XRGrabInteractable>() : null;
@@ -60,6 +56,16 @@ namespace HSE.EditorTools
             var bedside = new GameObject("BedsidePoint").transform;
             bedside.SetParent(root.transform, false);
             bedside.position = bed ? bed.position + new Vector3(-0.95f, 0, -0.2f) : new Vector3(-0.65f, 0, 1.15f);
+
+            // A small glowing ring on the floor is the target for "go to the patient" (instead of the whole bed).
+            var marker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            marker.name = "BedsideMarker";
+            Object.DestroyImmediate(marker.GetComponent<Collider>());
+            marker.transform.SetParent(bedside, false);
+            marker.transform.localPosition = new Vector3(0, 0.004f, 0);
+            marker.transform.localScale = new Vector3(0.55f, 0.003f, 0.55f);
+            marker.GetComponent<MeshRenderer>().sharedMaterial = GuideMaterial("BedsideMarker", new Color(1f, 0.78f, 0.1f, 0.45f), true);
+            marker.GetComponent<MeshRenderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
             T Step<T>(string id, string title, string instruction, StepRequirement req, int points, HighlightStyle style, params GameObject[] targets) where T : ScenarioStep
             {
@@ -76,18 +82,19 @@ namespace HSE.EditorTools
             grab.SetItem(pdaGrab);
 
             var approach = Step<ReachLocationStep>("approach", "Go to the patient",
-                "Walk to the right side of the bed.", StepRequirement.Mandatory, 5, HighlightStyle.Hint, bed ? bed.gameObject : null);
+                "Walk to the right side of the bed.", StepRequirement.Mandatory, 5, HighlightStyle.Hint, marker);
             approach.SetLocation(bedside, 0.9f);
+            marker.AddComponent<ShowWhileStepActive>().Bind(approach);
 
             var scan = Step<ScanWristbandStep>("scan_wristband", "Scan the wristband",
-                "Hold the PDA trigger and aim the red beam at the QR code on the patient's right wrist.", StepRequirement.Mandatory, 15, HighlightStyle.Objective,
+                "Hold the PDA and aim the red beam at the QR code on the patient's right wrist.", StepRequirement.Mandatory, 15, HighlightStyle.Objective,
                 wristband ? wristband.gameObject : null, wristQr ? wristQr.gameObject : null);
-            scan.SetExpectedPatient(patient);
+            scan.SetExpectedPatient(null); // whichever patient the roster put in the bed
 
             var confirm = Step<ConfirmIdentityStep>("confirm_identity", "Confirm identity",
                 "Compare the PDA details with the patient and press \"Confirm Identity\".", StepRequirement.Mandatory, 10, HighlightStyle.Objective,
                 pda ? pda.gameObject : null);
-            confirm.SetExpectedPatient(patient);
+            confirm.SetExpectedPatient(null);
 
             var hygiene = Step<CompositeStep>("hand_hygiene", "Hand hygiene and gloves",
                 "Sanitise your hands before touching the patient, then put on gloves.", StepRequirement.Mandatory, 15, HighlightStyle.Objective);
@@ -100,7 +107,7 @@ namespace HSE.EditorTools
             var order = Step<SubmitLabOrderStep>("lab_order", "Send the lab request",
                 "Open \"Lab Request\" on the PDA, select the tests the physician ordered and send.", StepRequirement.Mandatory, 20, HighlightStyle.Objective,
                 pda ? pda.gameObject : null);
-            order.SetExpectedPatient(patient);
+            order.SetExpectedPatient(null);
 
             // ---------------- optional extras: no highlight, bonus points for initiative
             var readBoard = Step<InteractStep>("read_care_board", "Check the care board",
@@ -129,7 +136,15 @@ namespace HSE.EditorTools
             panel.transform.rotation = Quaternion.Euler(0, 35, 0);
             panel.Bind(runner);
 
-            PrepareHighlights(pda ? pda.gameObject : null, bed ? bed.gameObject : null);
+            PrepareHighlights(pda ? pda.gameObject : null, marker);
+
+            // Patient for this session: random from the roster; drives the wristband, figure look and step checks.
+            var roster = root.AddComponent<PatientRoster>();
+            var figureRoots = new[] { Find("Patient"), Find("UpperBody") }.Where(t => t).ToArray();
+            roster.Configure(patients, wristQr ? wristQr.GetComponent<ScannableCode>() : null, figureRoots);
+
+            var gloveVisual = root.AddComponent<GloveVisual>();
+            gloveVisual.Bind(runner, GloveMaterial());
 
             EditorUtility.SetDirty(root);
             Debug.Log("[HSE] Scenario set up with " + runner.Steps.Count + " steps.");
@@ -162,7 +177,7 @@ namespace HSE.EditorTools
                 if (t) Configure(t.gameObject, PrismPreset.Objective, screen: false);
             }
             if (pda) Configure(pda, PrismPreset.Objective, screen: true);
-            if (bed) Configure(bed, PrismPreset.SubtleHover, screen: false);
+            if (bed) Configure(bed, PrismPreset.SubtleHover, screen: false); // bed argument is the floor marker now
         }
 
         static void Configure(GameObject go, PrismPreset preset, bool screen)
@@ -184,6 +199,22 @@ namespace HSE.EditorTools
             }
             h.highlighted = false;
             EditorUtility.SetDirty(h);
+        }
+
+        static Material GloveMaterial()
+        {
+            const string path = "Assets/HSE/Materials/Guide/NitrileGlove.mat";
+            var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (!m)
+            {
+                GuideMaterial("GuideArrow", new Color(1f, 0.78f, 0.1f, 1f), false); // makes sure the folder exists
+                m = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                AssetDatabase.CreateAsset(m, path);
+            }
+            m.SetColor("_BaseColor", new Color(0.32f, 0.5f, 0.92f));
+            m.SetFloat("_Smoothness", 0.6f);
+            EditorUtility.SetDirty(m);
+            return m;
         }
 
         static Material GuideMaterial(string name, Color color, bool transparent)

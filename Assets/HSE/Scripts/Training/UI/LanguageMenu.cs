@@ -56,7 +56,7 @@ namespace HSE.Training.UI
             MakeButton(rt, "English", new Vector2(-200, -40), () => Choose(Language.English));
             MakeButton(rt, "Türkçe", new Vector2(200, -40), () => Choose(Language.Turkish));
 
-            var hint = Text(rt, "Point and pull the trigger  ·  İşaret edip tetiğe basın", 26, false);
+            var hint = Text(rt, "Point and pinch or pull the trigger  ·  İşaret edip parmakları birleştirin veya tetiğe basın", 26, false);
             hint.color = new Color(1, 1, 1, 0.7f);
             Anchor(hint.rectTransform, 0, 0, 1, 0, new Vector2(0, 50), new Vector2(-40, 60));
         }

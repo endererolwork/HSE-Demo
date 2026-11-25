@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using HSE.Clinical;
 using HSE.Devices;
+using HSE.Localization;
 using HSE.Scenario;
 using HSE.Training.UI;
 using PrismFX;
@@ -36,6 +37,8 @@ public class VerifyDriver : MonoBehaviour
     IEnumerator Start()
     {
         yield return new WaitForSeconds(1.0f);
+        FindFirstObjectByType<HSE.Training.UI.LanguageMenu>()?.Choose(Language.English);
+        yield return null;
         try { Setup(); } catch (System.Exception e) { Check(false, "setup threw " + e); Finish(); yield break; }
 
         // ---------- initial state
@@ -98,7 +101,7 @@ public class VerifyDriver : MonoBehaviour
         Check(Lit(_pda.gameObject), "PDA highlighted for confirm_identity");
 
         // ---------- 4 confirm identity
-        Check(Press("Kimliği Doğrula"), "found 'Kimliği Doğrula' button");
+        Check(Press(Loc.T("pda.confirmIdentity")), "found confirm identity button");
         yield return null;
         Check(_runner.CurrentStep?.Id == "hand_hygiene", "after confirm -> hand_hygiene");
         ShotPda("09_pda_identity_confirmed");
@@ -124,24 +127,24 @@ public class VerifyDriver : MonoBehaviour
         Check(_runner.Steps.First(s => s.Id == "read_care_board").State == StepState.Completed, "optional care board step completes on hover");
 
         // ---------- 6 lab order
-        Check(Press("Tahlil İstemi"), "found 'Tahlil İstemi' button");
+        Check(Press(Loc.T("pda.labRequest")), "found lab request button");
         yield return null;
         ShotPda("12_pda_order_empty");
         int m0 = _runner.Report.MistakeCount;
-        Press("İstemi Gönder");
+        Press(Loc.T("pda.send"));
         yield return null;
         Check(_runner.Report.MistakeCount == m0 + 1, "sending an empty order is a mistake");
         foreach (var id in qr.patient.physicianOrderedTestIds) Check(PressRow(LabTestCatalog.Get(id).Name), "select test " + id);
-        PressRow("Koagülasyon");
+        PressRow(LabTestCatalog.Get("COAG").Name);
         yield return null;
-        Press("İstemi Gönder");
+        Press(Loc.T("pda.send"));
         yield return null;
         Check(_runner.CurrentStep?.Id == "lab_order", "order with an extra test is rejected");
         ShotPda("13_pda_order_mismatch");
-        PressRow("Koagülasyon");
+        PressRow(LabTestCatalog.Get("COAG").Name);
         yield return null;
         ShotPda("14_pda_order_selected");
-        Press("İstemi Gönder");
+        Press(Loc.T("pda.send"));
         yield return null;
         ShotPda("15_pda_confirmation");
         Check(!_runner.IsRunning && _runner.Report.IsFinished, "scenario finished after lab order");
