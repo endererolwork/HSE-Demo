@@ -19,7 +19,7 @@ MonoBehaviour:
   ward: Internal Medicine 2B
   room: 204
   bed: 1
-  attendingPhysician: Dr. Sarah Collins
+  attendingPhysician: VR Doctor 1
   diagnosis: Atrial fibrillation on warfarin, INR monitoring
   bloodType: B Rh(+)
   allergies: Aspirin
@@ -28,6 +28,45 @@ MonoBehaviour:
   - COAG
   - CBC
   - BIOCHEM
+  problems: 'Atrial fibrillation, fast rate at times. Warfarin: INR target 2-3. Bruising
+    on arms - watch for bleeding.'
+  diet: Normal diet, consistent vitamin K
+  mobility: Walks with stick
+  fallsRisk: Medium
+  heartRate: 102
+  spo2: 96
+  respRate: 17
+  systolic: 136
+  diastolic: 84
+  temperature: 36.7
+  irregularRhythm: 1
+  labResults:
+  - analyte: PT
+    value: 31
+  - analyte: APTT
+    value: 36.2
+  - analyte: INR
+    value: 3.6
+  - analyte: WBC
+    value: 7.2
+  - analyte: HGB
+    value: 118
+  - analyte: PLT
+    value: 224
+  - analyte: NA
+    value: 139
+  - analyte: K
+    value: 4.4
+  - analyte: UREA
+    value: 6
+  - analyte: CREA
+    value: 98
+  labComment: INR is 3.6, above the warfarin target of 2 to 3, and the prothrombin
+    time is prolonged, so the blood is clotting too slowly and the bleeding risk
+    is higher. Haemoglobin is low at 118 g/L, which together with the bruising needs
+    attention. Electrolytes and kidney function are normal. Tell VR Doctor 1 before
+    the next warfarin dose, check for any signs of bleeding and avoid injections
+    into muscle.
   skinTone: {r: 0.8, g: 0.62, b: 0.48, a: 1}
   hairColor: {r: 0.35, g: 0.33, b: 0.32, a: 1}
   gownColor: {r: 0.7, g: 0.74, b: 0.86, a: 1}

@@ -1,5 +1,14 @@
 {
   "dependencies": {
+    "com.endererol.prismfx.highlight": {
+      "version": "https://github.com/endererolwork/PrismVFX-Highlight.git#v1.2.0",
+      "depth": 0,
+      "source": "git",
+      "dependencies": {
+        "com.unity.render-pipelines.universal": "17.0.3"
+      },
+      "hash": "48e52a001989ddd487863f763f8be4383ccc3b27"
+    },
     "com.unity.2d.sprite": {
       "version": "1.0.0",
       "depth": 1,
