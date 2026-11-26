@@ -380,7 +380,7 @@ namespace HSE.Devices
                 return;
             }
             var printer = FindFirstObjectByType<LabelPrinterDevice>();
-            var fill = FindFirstObjectByType<TubeFilling>();
+            var fill = FindFirstObjectByType<TubeFilling>(FindObjectsInactive.Include);
             if (!printer || !fill) return;
             var tubes = fill.Tubes.Where(t => t && draw.RequiredTubes.Contains(t.name)).Select(t => t.transform);
             printer.PrintLabels(_patient, tubes, draw.CollectedAt);

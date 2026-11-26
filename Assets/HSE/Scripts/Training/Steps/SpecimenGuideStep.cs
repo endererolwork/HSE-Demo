@@ -74,7 +74,7 @@ namespace HSE.Training.Steps
                     IReadOnlyCollection<string> done = session ? session.BaggedTubes : new string[0];
                     string next = plan.FirstOrDefault(t => !done.Contains(t));
                     _cue = next == null ? null : Loc.F("specimen.bagCue", plan.IndexOf(next) + 1, plan.Count, Loc.T("tube." + next));
-                    var fill = FindFirstObjectByType<TubeFilling>();
+                    var fill = FindFirstObjectByType<TubeFilling>(FindObjectsInactive.Include);
                     var tube = fill && next != null ? fill.Tubes.FirstOrDefault(t => t && t.name == next) : null;
                     return new[] { tube ? tube.gameObject : null, bag };
                 }

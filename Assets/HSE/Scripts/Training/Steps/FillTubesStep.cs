@@ -67,7 +67,7 @@ namespace HSE.Training.Steps
 
         static GameObject FindTube(string name)
         {
-            var fill = FindFirstObjectByType<TubeFilling>();
+            var fill = FindFirstObjectByType<TubeFilling>(FindObjectsInactive.Include);
             var t = fill ? fill.Tubes.FirstOrDefault(x => x && x.name == name) : null;
             return t ? t.gameObject : GameObject.Find(name);
         }

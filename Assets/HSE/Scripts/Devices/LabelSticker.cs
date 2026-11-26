@@ -38,7 +38,7 @@ namespace HSE.Devices
                 return;
             }
             // Another filled tube nearby: wrong label.
-            foreach (var other in FindObjectsByType<TubeFilling>(FindObjectsSortMode.None))
+            foreach (var other in FindObjectsByType<TubeFilling>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             foreach (var t in other.Tubes)
             {
                 if (!t || t.transform == tube) continue;
