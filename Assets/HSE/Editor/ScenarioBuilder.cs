@@ -129,6 +129,7 @@ namespace HSE.EditorTools
             // ---------------- GDD steps 3-4: venous blood collection
             var draw = SetupBloodDraw(Find("UpperBody"), Find("RightArm"));
             root.AddComponent<BloodDrawSession>();
+            root.AddComponent<TubeFillNotice>();
             var blood = Step<CompositeStep>("blood_draw", "Take the blood sample",
                 "Tourniquet, clean the site, insert the needle, fill the tubes for the ordered tests, release the tourniquet, withdraw, dispose of the needle, cover the site.",
                 StepRequirement.Mandatory, 25, HighlightStyle.Objective);
