@@ -18,6 +18,7 @@ namespace HSE.Devices
         float _mismatchCooldown;
 
         public PatientRecord Patient { get; private set; }
+        public Transform Tube => tube;
         public bool Applied { get; private set; }
 
         public void Configure(Transform targetTube, PatientRecord patient)
@@ -58,10 +59,10 @@ namespace HSE.Devices
             var col = GetComponent<Collider>();
             if (col) col.enabled = false;
             transform.SetParent(tube, false);
-            // Wrapped along the tube body, facing out.
-            transform.localPosition = new Vector3(0, 0.005f, -0.0095f);
-            transform.localRotation = Quaternion.Euler(90, 0, 90);
-            transform.localScale = new Vector3(0.5f, 1f, 0.8f);
+            // Along the tube body (label width runs up the tube), printed side facing out; tube body radius 8 mm.
+            transform.localPosition = new Vector3(0, 0.002f, -0.0088f);
+            transform.localRotation = Quaternion.LookRotation(Vector3.left, Vector3.back);
+            transform.localScale = Vector3.one;
             ClinicalEvents.RaiseProcedure("label_applied:" + tube.name);
         }
     }

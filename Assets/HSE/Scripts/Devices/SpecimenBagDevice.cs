@@ -94,9 +94,26 @@ namespace HSE.Devices
 
         void InsertSlip(Transform slip, XRGrabInteractable grab)
         {
-            Stow(slip, grab, new Vector3(0, 0.004f, 0.05f), Quaternion.identity);
+            Stow(slip, grab, new Vector3(0, 0.0045f, 0.03f), Quaternion.identity);
             _slipIn = true;
             ClinicalEvents.RaiseProcedure("slip_pocketed");
+        }
+
+        Transform _contents;
+
+        /// <summary>Unscaled child holding what goes into the bag; the bag mesh itself is a non-uniformly scaled box
+        /// and rotated children under it would shear.</summary>
+        Transform Contents
+        {
+            get
+            {
+                if (_contents) return _contents;
+                _contents = new GameObject("Contents").transform;
+                _contents.SetParent(transform, false);
+                var s = transform.lossyScale;
+                _contents.localScale = new Vector3(1f / Mathf.Max(1e-4f, s.x), 1f / Mathf.Max(1e-4f, s.y), 1f / Mathf.Max(1e-4f, s.z));
+                return _contents;
+            }
         }
 
         void Stow(Transform item, XRGrabInteractable grab, Vector3 localPos, Quaternion localRot)
@@ -107,9 +124,9 @@ namespace HSE.Devices
             var home = item.GetComponent<ReturnHome>();
             if (home) home.enabled = false;
             foreach (var c in item.GetComponentsInChildren<Collider>()) c.enabled = false;
-            item.SetParent(transform, true);
-            item.localPosition = localPos;
-            item.localRotation = localRot;
+            item.SetParent(Contents, true);
+            // Offsets are in metres in the bag's frame (the bag mesh is a scaled box, so not in its local units).
+            item.SetPositionAndRotation(transform.position + transform.rotation * localPos, transform.rotation * localRot);
         }
 
         void Seal()

@@ -174,7 +174,8 @@ namespace HSE.EditorTools
                 wristband ? wristband.gameObject : null);
             var print = ChildStep<ProcedureStep>(label, "print_labels", "Print labels", "On the PDA patient screen press the blue Print labels button right under the tabs.", pda ? pda.gameObject : null);
             print.SetEvent("labels_printed");
-            var stick = ChildStep<ProcedureStep>(label, "apply_labels", "Apply the labels", "Take each label from the printer and hold it against its tube.", spec.Printer);
+            var stick = ChildStep<SpecimenGuideStep>(label, "apply_labels", "Apply the labels", "Take the glowing label from the printer and hold it against the glowing tube; then the next one lights up.", spec.Printer);
+            stick.SetMode(SpecimenGuideStep.Mode.ApplyLabels, spec.Bag);
             stick.SetEvent("labels_complete");
             label.SetChildren(new ScenarioStep[] { rescan, print, stick }, CompositeStep.Order.InSequence);
 
@@ -194,11 +195,18 @@ namespace HSE.EditorTools
                 st.SetEvent(evt);
                 return st;
             }
+            ProcedureStep G(string id, string title, string instr, string evt, SpecimenGuideStep.Mode mode)
+            {
+                var st = ChildStep<SpecimenGuideStep>(dispatch, id, title, instr, spec.Bag);
+                st.SetMode(mode, spec.Bag);
+                st.SetEvent(evt);
+                return st;
+            }
             dispatch.SetChildren(new ScenarioStep[]
             {
-                D("bag_tubes", "Bag the tubes", "Put each labelled tube into the specimen bag.", "tubes_bagged", spec.Bag),
-                D("pocket_slip", "Add the request slip", "Take the one printed request slip from the label printer and bring it to the glowing specimen bag; it goes into the outer pocket.", "slip_pocketed", spec.Bag),
-                D("seal_bag", "Seal the bag", "Press SEAL on the bag.", "bag_sealed", spec.Bag),
+                G("bag_tubes", "Bag the tubes", "Bring each glowing labelled tube to the specimen bag; it goes inside.", "tubes_bagged", SpecimenGuideStep.Mode.BagTubes),
+                G("pocket_slip", "Add the request slip", "Take the one printed request slip from the label printer and bring it to the glowing specimen bag; it goes into the outer pocket.", "slip_pocketed", SpecimenGuideStep.Mode.PocketSlip),
+                D("seal_bag", "Seal the bag", "Press the red SEAL strip on the bag.", "bag_sealed", spec.Bag && spec.Bag.transform.Find("SealButton") ? spec.Bag.transform.Find("SealButton").gameObject : spec.Bag),
                 D("scan_bag", "Scan the bag", "Scan the bag barcode with the PDA and press Send to laboratory.", "dispatch_requested", spec.Bag),
                 D("send_tube", "Send by pneumatic tube", "Put the sealed bag into the pneumatic tube station.", "specimen_dispatched", spec.StationOpening),
             }, CompositeStep.Order.InSequence);
@@ -288,7 +296,8 @@ namespace HSE.EditorTools
             if (printerT)
             {
                 var outlet = Child(printerT, "Outlet", new Vector3(0, 0.1f, 0.12f), Quaternion.identity);
-                printerT.gameObject.AddComponent<LabelPrinterDevice>().Configure(Mat("Sheet"), outlet);
+                printerT.gameObject.AddComponent<LabelPrinterDevice>().Configure(
+                    GuideMaterial("LabelPaper", new Color(0.97f, 0.97f, 0.95f, 1f), false), GuideMaterial("LabelInk", new Color(0.05f, 0.05f, 0.07f, 1f), false), outlet);
                 kit.Printer = printerT.gameObject;
             }
 
