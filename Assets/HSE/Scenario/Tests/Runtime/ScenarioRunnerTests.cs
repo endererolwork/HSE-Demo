@@ -203,6 +203,25 @@ namespace HSE.Scenario.Tests
         }
 
         [Test]
+        public void GoBack_ReopensPreviousStep()
+        {
+            var a = Step("a");
+            var b = Step("b");
+            Play(a, b);
+            a.Finish();
+            Assert.AreEqual(StepState.Active, b.State);
+
+            _runner.GoBackOneStep();
+            Assert.AreEqual(StepState.Active, a.State);
+            Assert.AreEqual(StepState.Locked, b.State);
+            Assert.IsTrue(a.Reopened);
+            Assert.AreSame(a, _runner.CurrentStep);
+
+            a.Finish();
+            Assert.AreEqual(StepState.Active, b.State);
+        }
+
+        [Test]
         public void Restart_ResetsSteps()
         {
             var a = Step("a");
