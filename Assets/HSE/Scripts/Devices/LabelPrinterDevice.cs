@@ -26,6 +26,8 @@ namespace HSE.Devices
         readonly List<GameObject> _printed = new List<GameObject>();
 
         public string NurseId => nurseId;
+        public Material PaperMaterial => paperMaterial;
+        public Material InkMaterial => inkMaterial;
 
         public void Configure(Material paper, Material ink, Transform paperOutlet)
         {

@@ -77,6 +77,22 @@ namespace HSE.Scenario
         {
             if (State == StepState.Active) Finish(StepState.Skipped);
             State = StepState.Locked;
+            Reopened = false;
+        }
+
+        /// <summary>
+        /// True when the trainee went back to this step: it should wait for the action again instead of counting
+        /// something that already happened earlier.
+        /// </summary>
+        public bool Reopened { get; private set; }
+
+        /// <summary>Marks a locked step as gone back to (see <see cref="Reopened"/>). Call after ResetStep.</summary>
+        public void MarkReopened() => Reopened = true;
+
+        /// <summary>Counts a locked step as done without running it (used when resuming a group at a later sub-task).</summary>
+        public void MarkCompletedWithoutRunning()
+        {
+            if (State == StepState.Locked) State = StepState.Completed;
         }
 
         // ------------------------------------------------------------ for subclasses

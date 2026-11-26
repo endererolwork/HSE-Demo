@@ -38,8 +38,8 @@ namespace HSE.Training.UI
 
         /// <summary>Raised when the trainee presses "Next patient" on the results screen.</summary>
         public event System.Action NextRequested;
-        RectTransform _nextButton, _skipButton;
-        TextMeshProUGUI _skipText;
+        RectTransform _nextButton, _skipButton, _backButton;
+        TextMeshProUGUI _skipText, _backText;
 
         /// <summary>Opens the full list. With autoHide it folds back into the tab after a while.</summary>
         public void Expand(bool autoHide = true)
@@ -140,6 +140,14 @@ namespace HSE.Training.UI
             Expand(autoHide: true);
         }
         void OnChanged(ScenarioStep _) => Redraw();
+        void BackStep()
+        {
+            if (!runner || !runner.IsRunning) return;
+            runner.GoBackOneStep();
+            Redraw();
+            Expand(autoHide: true);
+        }
+
         void SkipStep()
         {
             if (!runner || !runner.IsRunning) return;
@@ -164,6 +172,7 @@ namespace HSE.Training.UI
             _tabText.text = Loc.T("checklist.done");
             _nextButton.gameObject.SetActive(true);
             _skipButton.gameObject.SetActive(false);
+            _backButton.gameObject.SetActive(false);
             _nextButton.GetComponentInChildren<TextMeshProUGUI>().text = Loc.T("session.next");
             _header.text = $"<b>{ScenarioTitle}</b>  ·  {Loc.T("checklist.done")}";
             _instruction.text = Loc.T("checklist.results");
@@ -211,6 +220,8 @@ namespace HSE.Training.UI
             _tabText.text = Loc.F("checklist.tab", done, mandatory.Count);
             _skipText.text = Loc.T("checklist.skip");
             _skipButton.gameObject.SetActive(runner.IsRunning);
+            _backText.text = Loc.T("checklist.back");
+            _backButton.gameObject.SetActive(runner.IsRunning);
 
             _instruction.text = InstructionText();
 
@@ -283,7 +294,8 @@ namespace HSE.Training.UI
             var head = Panel(rt, new Color(0.12f, 0.37f, 0.75f, 0.95f));
             Top(head, 0, 70);
             _header = Text(head, 30, Color.white, TextAlignmentOptions.MidlineLeft);
-            Stretch(_header.rectTransform, 22, 0, 250, 0);
+            Stretch(_header.rectTransform, 22, 0, 360, 0);
+            _header.enableAutoSizing = true; _header.fontSizeMin = 16; _header.fontSizeMax = 30;
 
             var close = Panel(head, new Color(1, 1, 1, 0.15f));
             close.anchorMin = close.anchorMax = new Vector2(1f, 0.5f);
@@ -300,13 +312,24 @@ namespace HSE.Training.UI
             _skipButton = Panel(head, new Color(0.95f, 0.65f, 0.15f, 0.9f));
             _skipButton.anchorMin = _skipButton.anchorMax = new Vector2(1f, 0.5f);
             _skipButton.pivot = new Vector2(1f, 0.5f);
-            _skipButton.sizeDelta = new Vector2(150, 58);
-            _skipButton.anchoredPosition = new Vector2(-86, 0);
+            _skipButton.sizeDelta = new Vector2(130, 58);
+            _skipButton.anchoredPosition = new Vector2(-84, 0);
             _skipButton.GetComponent<Image>().raycastTarget = true;
             _skipButton.gameObject.AddComponent<Button>().onClick.AddListener(SkipStep);
-            _skipText = Text(_skipButton, 28, Color.white, TextAlignmentOptions.Center);
+            _skipText = Text(_skipButton, 26, Color.white, TextAlignmentOptions.Center);
             _skipText.fontStyle = FontStyles.Bold;
             Stretch(_skipText.rectTransform, 0, 0, 0, 0);
+
+            _backButton = Panel(head, new Color(0.35f, 0.45f, 0.6f, 0.95f));
+            _backButton.anchorMin = _backButton.anchorMax = new Vector2(1f, 0.5f);
+            _backButton.pivot = new Vector2(1f, 0.5f);
+            _backButton.sizeDelta = new Vector2(130, 58);
+            _backButton.anchoredPosition = new Vector2(-222, 0);
+            _backButton.GetComponent<Image>().raycastTarget = true;
+            _backButton.gameObject.AddComponent<Button>().onClick.AddListener(BackStep);
+            _backText = Text(_backButton, 26, Color.white, TextAlignmentOptions.Center);
+            _backText.fontStyle = FontStyles.Bold;
+            Stretch(_backText.rectTransform, 0, 0, 0, 0);
 
             var instr = Panel(rt, new Color(1, 1, 1, 0.08f));
             Top(instr, 82, 150);

@@ -206,8 +206,8 @@ namespace HSE.EditorTools
             {
                 G("bag_tubes", "Bag the tubes", "Bring each glowing labelled tube to the specimen bag; it goes inside.", "tubes_bagged", SpecimenGuideStep.Mode.BagTubes),
                 G("pocket_slip", "Add the request slip", "Take the one printed request slip from the label printer and bring it to the glowing specimen bag; it goes into the outer pocket.", "slip_pocketed", SpecimenGuideStep.Mode.PocketSlip),
-                D("seal_bag", "Seal the bag", "Press the red SEAL strip on the bag.", "bag_sealed", spec.Bag && spec.Bag.transform.Find("SealButton") ? spec.Bag.transform.Find("SealButton").gameObject : spec.Bag),
-                D("scan_bag", "Scan the bag", "Scan the bag barcode with the PDA and press Send to laboratory.", "dispatch_requested", spec.Bag),
+                D("seal_bag", "Seal the bag", "The bag seals itself as soon as the tubes and the slip are in.", "bag_sealed", spec.Bag),
+                D("scan_bag", "Scan the bag", "Point the PDA at the white barcode sticker on the sealed bag and press SCAN (or the trigger), then press Send to laboratory on the PDA.", "dispatch_requested", spec.Bag),
                 D("send_tube", "Send by pneumatic tube", "Put the sealed bag into the pneumatic tube station.", "specimen_dispatched", spec.StationOpening),
             }, CompositeStep.Order.InSequence);
 
