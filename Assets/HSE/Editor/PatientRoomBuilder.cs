@@ -581,11 +581,11 @@ namespace HSE.EditorTools
 
             var rack = Group("TubeRack", items, new Vector3(-0.17f, 0.02f, 0.08f)).transform;
             Box("Rack", rack, new Vector3(0, 0.025f, 0), new Vector3(0.22f, 0.05f, 0.06f), M("PlasticWhite"));
-            string[] caps = { "CapLavender", "CapGold", "CapLightBlue", "CapGreen" };
-            string[] names = { "Tube_EDTA_Lavender", "Tube_SST_Gold", "Tube_Citrate_LightBlue", "Tube_Heparin_Green" };
-            for (int i = 0; i < 4; i++)
+            string[] caps = { "CapLavender", "CapGold", "CapLightBlue", "CapGreen", "PlasticGray" };
+            string[] names = { "Tube_EDTA_Lavender", "Tube_SST_Gold", "Tube_Citrate_LightBlue", "Tube_Heparin_Green", "Tube_Fluoride_Gray" };
+            for (int i = 0; i < names.Length; i++)
             {
-                var tube = Group(names[i], rack, new Vector3(-0.075f + i * 0.05f, 0.06f, 0)).transform;
+                var tube = Group(names[i], rack, new Vector3(-0.088f + i * 0.044f, 0.06f, 0)).transform;
                 Cyl("Body", tube, Vector3.zero, 0.016f, 0.1f, M("Glass"));
                 Cyl("Cap", tube, new Vector3(0, 0.058f, 0), 0.02f, 0.022f, M(caps[i]));
             }

@@ -43,5 +43,13 @@ namespace HSE.Clinical
         public static void RaiseBloodPressureStartedWithoutCuff() => BloodPressureStartedWithoutCuff?.Invoke();
         public static void RaiseBloodPressureMeasured(Vitals.VitalSample s) => BloodPressureMeasured?.Invoke(s);
         public static void RaiseVitalsRecorded(PatientRecord p, Vitals.VitalSample s) => VitalsRecorded?.Invoke(p, s);
+
+        // Procedures (blood draw etc.): named events like "tourniquet_on", "needle_in", "tube_filled:Tube_SST_Gold".
+        public static event Action<string> ProcedureEvent;
+        /// <summary>A procedure rule was broken; the argument is a localisation key for the message.</summary>
+        public static event Action<string> ProcedureMistake;
+
+        public static void RaiseProcedure(string id) => ProcedureEvent?.Invoke(id);
+        public static void RaiseProcedureMistake(string messageKey) => ProcedureMistake?.Invoke(messageKey);
     }
 }

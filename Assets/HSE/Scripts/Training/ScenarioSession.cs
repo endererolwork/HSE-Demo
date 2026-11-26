@@ -48,8 +48,21 @@ namespace HSE.Training
         {
             if (roster) roster.ApplyNext();
             ResetPda();
-            foreach (var item in FindObjectsByType<ReturnHome>(FindObjectsSortMode.None)) item.SendHome(); // e.g. the BP cuff
+            ResetProcedureTools();
             if (runner) runner.StartScenario();
+        }
+
+        /// <summary>Cuff, tourniquet, swab, needle, tubes and gauze back on the trolley, emptied and re-armed.</summary>
+        static void ResetProcedureTools()
+        {
+            foreach (var item in FindObjectsByType<ReturnHome>(FindObjectsInactive.Include, FindObjectsSortMode.None))
+            {
+                item.gameObject.SetActive(true); // the needle is hidden after going into the sharps box
+                item.SendHome();
+            }
+            foreach (var t in FindObjectsByType<ProximityTrigger>(FindObjectsSortMode.None)) t.ResetTrigger();
+            foreach (var n in FindObjectsByType<NeedleInsertion>(FindObjectsSortMode.None)) n.ResetNeedle();
+            foreach (var f in FindObjectsByType<TubeFilling>(FindObjectsInactive.Include, FindObjectsSortMode.None)) f.ResetTubes();
         }
 
         void ResetPda()
