@@ -151,11 +151,17 @@ namespace HSE.Training.UI
             _nextButton.GetComponentInChildren<TextMeshProUGUI>().text = Loc.T("session.next");
             _header.text = $"<b>{ScenarioTitle}</b>  ·  {Loc.T("checklist.done")}";
             _instruction.text = Loc.T("checklist.results");
-            _list.text =
-                $"{Loc.T("checklist.score")}: <b>{report.Score} / {report.MaxScore}</b>\n" +
-                $"{Loc.T("checklist.mistakes")}: <b>{report.MistakeCount}</b>\n" +
-                $"{Loc.T("checklist.time")}: <b>{(int)(t / 60):00}:{(int)(t % 60):00}</b>\n" +
-                $"{Loc.T("checklist.extrasDone")}: <b>{report.CompletedCount(StepRequirement.Optional)} / {report.Count(StepRequirement.Optional)}</b>";
+            var sb = new StringBuilder();
+            if (!string.IsNullOrEmpty(report.EndedEarlyReason)) sb.Append($"<color=#F2B84B>{report.EndedEarlyReason}</color>\n");
+            sb.Append($"{Loc.T("checklist.score")}: <b>{report.Score} / {report.MaxScore}</b>   {Loc.T("checklist.mistakes")}: <b>{report.MistakeCount}</b>   {Loc.T("checklist.time")}: <b>{(int)(t / 60):00}:{(int)(t % 60):00}</b>\n");
+            foreach (var line in ScoreCard.Build(report))
+            {
+                string value = line.NotApplicable && line.Max == 0 ? "n/a" : $"{line.Score}/{line.Max}";
+                string color = line.Max > 0 && line.Score == line.Max ? "#4CAF6A" : line.Mistakes > 0 || line.Score < line.Max ? "#F2B84B" : "#C9CFD8";
+                sb.Append($"<size=85%><color={color}>{line.Name}: <b>{value}</b>{(line.Mistakes > 0 ? $"  ({line.Mistakes}x)" : "")}</color></size>\n");
+            }
+            sb.Append($"<size=85%>{Loc.T("checklist.extrasDone")}: <b>{report.CompletedCount(StepRequirement.Optional)} / {report.Count(StepRequirement.Optional)}</b></size>");
+            _list.text = sb.ToString();
         }
 
         // ------------------------------------------------------------ drawing

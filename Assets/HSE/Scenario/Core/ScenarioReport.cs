@@ -43,7 +43,7 @@ namespace HSE.Scenario
         });
 
         public int MaxScore(IReadOnlyList<StepResult> results) =>
-            results.Where(r => r.Step.Requirement == StepRequirement.Mandatory).Sum(r => r.Step.Points);
+            results.Where(r => r.Step.Requirement == StepRequirement.Mandatory && r.Outcome != StepState.NotApplicable).Sum(r => r.Step.Points);
     }
 
     /// <summary>Records a run: timing, outcome and mistakes per step. Plain C#, no Unity objects.</summary>
@@ -83,6 +83,9 @@ namespace HSE.Scenario
         }
 
         public void Mistake(IStepInfo step, string message) => Get(step).Mistakes.Add(message);
+
+        /// <summary>Why the run ended before all steps, if it did (e.g. "Consent refused").</summary>
+        public string EndedEarlyReason { get; set; }
 
         public int Score => _scoring.Score(_results);
         public int MaxScore => _scoring.MaxScore(_results);

@@ -104,6 +104,25 @@ namespace HSE.Scenario
             AdvanceToNextMandatory();
         }
 
+        /// <summary>
+        /// Ends the run now for a valid reason (e.g. the patient refused consent and it was handled correctly).
+        /// Open and remaining steps are marked not applicable, so they don't count against the score.
+        /// </summary>
+        public void EndEarly(string reason)
+        {
+            if (!IsRunning) return;
+            Report.EndedEarlyReason = reason;
+            foreach (var s in steps.Where(s => s && s.State != StepState.Completed))
+            {
+                if (s.State == StepState.Active) { Unsubscribe(s); s.Abort(); }
+                Report.StepEnded(s, s.Requirement == StepRequirement.Mandatory ? StepState.NotApplicable : StepState.Skipped, Clock.Now);
+            }
+            CurrentStep = null;
+            Report.Finish(Clock.Now);
+            IsRunning = false;
+            ScenarioCompleted?.Invoke(Report);
+        }
+
         void AdvanceToNextMandatory()
         {
             CurrentStep = MandatorySteps.FirstOrDefault(s => s.State == StepState.Locked);

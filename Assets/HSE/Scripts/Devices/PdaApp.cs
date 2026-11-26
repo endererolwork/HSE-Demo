@@ -57,7 +57,7 @@ namespace HSE.Devices
             _selected.Clear();
             _lastOrder = null;
             _patientTab = PatientTab.Details;
-            _bpMeasured = _vitalsRecorded = false;
+            _bpMeasured = _vitalsRecorded = _escalated = false;
             ShowHome(null);
         }
         public bool IdentityConfirmed => _identityConfirmed;
@@ -199,12 +199,17 @@ namespace HSE.Devices
             }
             else
             {
-                MakeButton(col, Loc.T("pda.confirmIdentity"), Green, Color.white, 112, () =>
+                var idRow = HRow(col, 112, 14);
+                MakeButton(idRow, Loc.T("pda.confirmIdentity"), Green, Color.white, 112, () =>
                 {
-                    _identityConfirmed = true;
                     ClinicalEvents.RaiseIdentityConfirmed(_patient);
+                    // Confirming the wrong person does not unlock the record.
+                    if (_patient == ActivePatient.Current) _identityConfirmed = true;
                     ShowPatient();
                 });
+                // GDD branch: the band does not match the patient -> stop and report.
+                MakeButton(idRow, Loc.T("pda.reportMismatch"), RedLight, Red, 112, () => ClinicalEvents.RaiseProcedure("id_mismatch_reported"))
+                    .GetComponentInChildren<TextMeshProUGUI>().fontSize = 28;
             }
             var nav = HRow(col, 112, 14);
             MakeButton(nav, Loc.T("pda.home"), Line, Ink, 112, () => ShowHome(null));
@@ -233,8 +238,21 @@ namespace HSE.Devices
             // Record the bedside measurement into the patient record.
             if (_bpMeasured)
             {
-                bool abnormal = v.Systolic >= 140 || v.Systolic < 100 || v.Diastolic >= 90 || v.Diastolic < 60 || v.HeartRate > 100 || v.HeartRate < 50;
-                if (abnormal) Label(col, Loc.T("pda.vitals.abnormal"), 26, Red, TextAlignmentOptions.Center, true, 70);
+                bool critical = v.Systolic >= 180 || v.Diastolic >= 110 || v.Systolic < 90;
+                bool abnormal = critical || v.Systolic >= 140 || v.Systolic < 100 || v.Diastolic >= 90 || v.Diastolic < 60 || v.HeartRate > 100 || v.HeartRate < 50;
+                if (critical && !_escalated)
+                {
+                    // GDD branch: critical blood pressure must be escalated before carrying on.
+                    Label(col, Loc.T("pda.vitals.critical"), 26, Red, TextAlignmentOptions.Center, true, 70);
+                    MakeButton(col, Loc.T("pda.vitals.escalate"), Red, Color.white, 96, () =>
+                    {
+                        _escalated = true;
+                        ClinicalEvents.RaiseProcedure("bp_escalated");
+                        ShowPatient();
+                    });
+                    return;
+                }
+                if (abnormal) Label(col, Loc.T(critical ? "pda.vitals.escalated" : "pda.vitals.abnormal"), 26, Red, TextAlignmentOptions.Center, true, 70);
                 if (_vitalsRecorded)
                 {
                     var done = Box(col, BlueLight, 70);
@@ -251,7 +269,7 @@ namespace HSE.Devices
             else Label(col, Loc.T("pda.vitals.measureFirst"), 26, Muted, TextAlignmentOptions.Center, false, 60);
         }
 
-        bool _bpMeasured, _vitalsRecorded;
+        bool _bpMeasured, _vitalsRecorded, _escalated;
 
         void OnBpMeasured(HSE.Clinical.Vitals.VitalSample _)
         {
@@ -477,6 +495,12 @@ namespace HSE.Devices
         void OnProcedure(string id)
         {
             if (id == "specimen_dispatched") ShowMessage(Loc.T("pda.spec.dispatched"), Green);
+            if (id == "wristband_replaced")
+            {
+                _patient = null;
+                _identityConfirmed = false;
+                ShowHome("<color=#" + ColorUtility.ToHtmlStringRGB(Amber) + ">" + Loc.T("pda.newWristband") + "</color>");
+            }
         }
 
         void ShowOrder()

@@ -10,9 +10,19 @@ namespace HSE.Training.Steps
     {
         protected override void Subscribe(bool on)
         {
-            if (on) ClinicalEvents.IdentityConfirmed += OnConfirmed;
-            else ClinicalEvents.IdentityConfirmed -= OnConfirmed;
+            if (on)
+            {
+                ClinicalEvents.IdentityConfirmed += OnConfirmed;
+                ClinicalEvents.ProcedureMistake += OnMistake;
+            }
+            else
+            {
+                ClinicalEvents.IdentityConfirmed -= OnConfirmed;
+                ClinicalEvents.ProcedureMistake -= OnMistake;
+            }
         }
+
+        void OnMistake(string key) => ReportMistake(Loc.T(key));
 
         void OnConfirmed(PatientRecord p)
         {

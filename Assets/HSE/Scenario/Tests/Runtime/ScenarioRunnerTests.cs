@@ -212,5 +212,27 @@ namespace HSE.Scenario.Tests
             Assert.AreEqual(StepState.Active, a.State);
             Assert.AreEqual(0, _runner.Report.Score);
         }
+
+        [Test]
+        public void EndEarly_MarksRemainingNotApplicable_AndExcludesThemFromMax()
+        {
+            var a = Step("a", points: 10);
+            var b = Step("b", points: 10);
+            var c = Step("c", points: 10);
+            ScenarioReport finished = null;
+            _runner.ScenarioCompleted += r => finished = r;
+            Play(a, b, c);
+
+            a.Finish();
+            _runner.EndEarly("consent refused");
+
+            Assert.NotNull(finished);
+            Assert.IsFalse(_runner.IsRunning);
+            Assert.AreEqual(StepState.NotApplicable, finished.For(b).Outcome);
+            Assert.AreEqual(StepState.NotApplicable, finished.For(c).Outcome);
+            Assert.AreEqual(10, finished.MaxScore);
+            Assert.AreEqual(10, finished.Score);
+            Assert.AreEqual("consent refused", finished.EndedEarlyReason);
+        }
     }
 }

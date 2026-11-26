@@ -47,14 +47,49 @@ namespace HSE.Clinical
             return patients[next];
         }
 
+        void OnEnable()
+        {
+            TrainingBranch.Changed += OnBranch;
+            ClinicalEvents.ProcedureEvent += OnProcedure;
+        }
+
+        void OnDisable()
+        {
+            TrainingBranch.Changed -= OnBranch;
+            ClinicalEvents.ProcedureEvent -= OnProcedure;
+        }
+
+        void OnBranch(Branch _) { if (ActivePatient.Current) SetWristband(ActivePatient.Current); }
+
+        /// <summary>"Wrong wristband" branch: the band carries another patient's details until the nurse reports it.</summary>
+        void SetWristband(PatientRecord p)
+        {
+            if (!wristband) return;
+            var band = p;
+            if (TrainingBranch.Current == Branch.WrongWristband && patients.Count > 1)
+                band = patients[(patients.IndexOf(p) + 1) % patients.Count];
+            wristband.patient = band;
+            wristband.code = band.WristbandCode;
+        }
+
+        void OnProcedure(string id)
+        {
+            if (id != "id_mismatch_reported" || !wristband) return;
+            if (wristband.patient == ActivePatient.Current)
+            {
+                ClinicalEvents.RaiseProcedureMistake("mistake.noMismatch");
+                return;
+            }
+            // The ward replaces the band with the correct one.
+            wristband.patient = ActivePatient.Current;
+            wristband.code = ActivePatient.Current.WristbandCode;
+            ClinicalEvents.RaiseProcedure("wristband_replaced");
+        }
+
         public void Apply(PatientRecord p)
         {
             ActivePatient.Set(p);
-            if (wristband)
-            {
-                wristband.patient = p;
-                wristband.code = p.WristbandCode;
-            }
+            SetWristband(p);
             foreach (var root in figureRoots)
             {
                 if (!root) continue;

@@ -17,8 +17,7 @@ namespace HSE.Training.Steps
         void OnScanned(ScannableCode code)
         {
             if (code.kind != CodeKind.PatientWristband) ReportMistake(Loc.T("mistake.notWristband"));
-            else if (!IsExpected(code.patient)) ReportMistake(Loc.T("mistake.wrongPatient"));
-            else Complete();
+            else Complete(); // a wrong band is caught at identity confirmation (compare with what the patient said)
         }
     }
 }

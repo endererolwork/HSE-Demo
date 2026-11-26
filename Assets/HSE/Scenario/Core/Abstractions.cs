@@ -8,7 +8,9 @@ namespace HSE.Scenario
         Locked,
         Active,
         Completed,
-        Skipped
+        Skipped,
+        /// <summary>Not needed in this run (e.g. the scenario ended early for a valid clinical reason). Excluded from the max score.</summary>
+        NotApplicable
     }
 
     /// <summary>Mandatory steps gate the scenario; optional ones run alongside it and only add bonus points.</summary>

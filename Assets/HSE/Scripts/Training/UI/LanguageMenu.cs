@@ -14,11 +14,20 @@ namespace HSE.Training.UI
     public class LanguageMenu : MonoBehaviour
     {
         [SerializeField] ScenarioRunner runner;
-        [SerializeField] Vector2 sizeMeters = new Vector2(0.62f, 0.4f);
+        [SerializeField] Vector2 sizeMeters = new Vector2(0.62f, 0.5f);
 
         const float Width = 900f;
 
         public void Bind(ScenarioRunner scenario) => runner = scenario;
+
+        readonly System.Collections.Generic.List<(Image, HSE.Clinical.Branch)> _variantButtons = new System.Collections.Generic.List<(Image, HSE.Clinical.Branch)>();
+
+        void SelectVariant(HSE.Clinical.Branch branch)
+        {
+            HSE.Clinical.TrainingBranch.Set(branch);
+            foreach (var (img, b) in _variantButtons)
+                img.color = b == branch ? new Color(0.12f, 0.37f, 0.75f, 1f) : new Color(1, 1, 1, 0.12f);
+        }
 
         void Awake() => Build();
 
@@ -53,12 +62,34 @@ namespace HSE.Training.UI
             var sub = Text(rt, "Blood Collection and Lab Request\nKan Alma ve Laboratuvar İstemi", 32, false);
             Anchor(sub.rectTransform, 0, 1, 1, 1, new Vector2(0, -205), new Vector2(-60, 120));
 
-            MakeButton(rt, "English", new Vector2(-200, -40), () => Choose(Language.English));
-            MakeButton(rt, "Türkçe", new Vector2(200, -40), () => Choose(Language.Turkish));
+            MakeButton(rt, "English", new Vector2(-200, 10), () => Choose(Language.English));
+            MakeButton(rt, "Türkçe", new Vector2(200, 10), () => Choose(Language.Turkish));
+
+            // Instructor: pick a GDD decision-point variant before starting.
+            var label = Text(rt, "Scenario variant / Senaryo varyantı", 26, false);
+            Anchor(label.rectTransform, 0, 0, 1, 0, new Vector2(0, 205), new Vector2(-40, 40));
+            var variants = new (string, HSE.Clinical.Branch)[]
+            {
+                ("Standard", HSE.Clinical.Branch.Standard),
+                ("Wrong wristband", HSE.Clinical.Branch.WrongWristband),
+                ("Critical BP", HSE.Clinical.Branch.CriticalBloodPressure),
+                ("Consent refused", HSE.Clinical.Branch.ConsentRefused),
+            };
+            for (int i = 0; i < variants.Length; i++)
+            {
+                var (name, branch) = variants[i];
+                var b = Box(rt, new Color(1, 1, 1, 0.12f));
+                Anchor(b, 0.5f, 0, 0.5f, 0, new Vector2(-330 + i * 220, 140), new Vector2(205, 70));
+                var btn = b.gameObject.AddComponent<Button>();
+                var t = Text(b, name, 24, true);
+                _variantButtons.Add((b.GetComponent<Image>(), branch));
+                btn.onClick.AddListener(() => SelectVariant(branch));
+            }
+            SelectVariant(HSE.Clinical.Branch.Standard);
 
             var hint = Text(rt, "Point and pinch or pull the trigger  ·  İşaret edip parmakları birleştirin veya tetiğe basın", 26, false);
             hint.color = new Color(1, 1, 1, 0.7f);
-            Anchor(hint.rectTransform, 0, 0, 1, 0, new Vector2(0, 50), new Vector2(-40, 60));
+            Anchor(hint.rectTransform, 0, 0, 1, 0, new Vector2(0, 40), new Vector2(-40, 50));
         }
 
         static void MakeButton(RectTransform parent, string label, Vector2 pos, Action onClick)

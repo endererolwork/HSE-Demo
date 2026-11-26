@@ -87,6 +87,14 @@ namespace HSE.EditorTools
             approach.SetLocation(bedside, 0.9f);
             marker.AddComponent<ShowWhileStepActive>().Bind(approach);
 
+            // GDD 1: introduce yourself; the patient states name and date of birth.
+            var dialogue = new GameObject("PatientDialogue").AddComponent<PatientDialogue>();
+            dialogue.transform.SetParent(root.transform, false);
+            dialogue.Bind(patientHead);
+            var greet = Step<GreetingStep>("greeting", "Introduce yourself",
+                "Greet the patient, say who you are and ask for their full name and date of birth.", StepRequirement.Mandatory, 5, HighlightStyle.Hint,
+                patientHead ? patientHead.gameObject : null);
+
             var scan = Step<ScanWristbandStep>("scan_wristband", "Scan the wristband",
                 "Pull the trigger or press SCAN on the PDA and point the laser at the QR code on the patient's right wrist.", StepRequirement.Mandatory, 15, HighlightStyle.Objective,
                 wristband ? wristband.gameObject : null, wristQr ? wristQr.gameObject : null);
@@ -121,6 +129,8 @@ namespace HSE.EditorTools
             var blood = Step<CompositeStep>("blood_draw", "Take the blood sample",
                 "Tourniquet, clean the site, insert the needle, fill the tubes for the ordered tests, release the tourniquet, withdraw, dispose of the needle, cover the site.",
                 StepRequirement.Mandatory, 25, HighlightStyle.Objective);
+            var consent = ChildStep<ConsentStep>(blood, "consent", "Explain and get consent", "Explain the blood test to the patient and ask for verbal consent.",
+                patientHead ? patientHead.gameObject : null);
             ProcedureStep P(string id, string title, string instr, string evt, Transform target)
             {
                 var s = ChildStep<ProcedureStep>(blood, id, title, instr, target ? target.gameObject : null);
@@ -129,6 +139,7 @@ namespace HSE.EditorTools
             }
             var drawSteps = new ScenarioStep[]
             {
+                consent,
                 P("apply_tourniquet", "Apply the tourniquet", "Put the tourniquet on the upper arm, above the elbow.", "tourniquet_on", draw.Tourniquet),
                 P("clean_site", "Clean the site", "Wipe the inside of the elbow with an alcohol swab and let it dry.", "site_cleaned", draw.Swab),
                 P("insert_needle", "Insert the needle", "Bring the needle to the inside of the elbow at a shallow angle (15-30 degrees).", "needle_in", draw.Holder),
@@ -191,7 +202,7 @@ namespace HSE.EditorTools
             checkMonitor.SetTarget(monitor, onSelect: true, onActivate: true, onHover: true);
 
             runner.Configure("Blood Collection and Lab Request",
-                new ScenarioStep[] { hygiene, grab, approach, scan, confirm, bp, blood, label, document, order, dispatch, readBoard, checkMonitor }, // hand hygiene first, before going to the patient
+                new ScenarioStep[] { hygiene, grab, approach, greet, scan, confirm, bp, blood, label, document, order, dispatch, readBoard, checkMonitor }, // hand hygiene first, before going to the patient
                 highlighter, autoPlay: false); // starts when a language is picked at the entrance
 
             var guide = new GameObject("Guide").AddComponent<ScenarioGuide>();
