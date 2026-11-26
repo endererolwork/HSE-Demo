@@ -13,11 +13,9 @@ namespace HSE.Training.Steps
     public class ConsentStep : ScenarioStep
     {
         PatientDialogue _dialogue;
-        bool _refused;
 
         protected override void OnBegin()
         {
-            _refused = false;
             _dialogue = FindFirstObjectByType<PatientDialogue>();
             if (!_dialogue) { Complete(); return; }
             Ask();
@@ -39,7 +37,6 @@ namespace HSE.Training.Steps
             }
             if (TrainingBranch.Current == Branch.ConsentRefused)
             {
-                _refused = true;
                 _dialogue.Say(Loc.T("reply.refuse"), 6f);
                 _dialogue.ShowOptions(new[] { Loc.T("say.refuse.respect"), Loc.T("say.refuse.push") }, OnRefusal);
                 return;
