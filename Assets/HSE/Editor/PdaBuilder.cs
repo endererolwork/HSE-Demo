@@ -23,7 +23,7 @@ namespace HSE.EditorTools
         const string DataDir = "Assets/HSE/Data";
         const string PatientPath = DataDir + "/Patient_Room204_Bed1.asset";
 
-        [MenuItem("HSE/Setup PDA In Scene")]
+        [MenuItem("HSE/Advanced/Setup PDA In Scene")]
         public static void SetupMenu()
         {
             SetupInScene();

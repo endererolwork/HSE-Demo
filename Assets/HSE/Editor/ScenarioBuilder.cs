@@ -23,7 +23,7 @@ namespace HSE.EditorTools
     {
         const string PatientPath = "Assets/HSE/Data/Patient_Room204_Bed1.asset";
 
-        [MenuItem("HSE/Setup Scenario")]
+        [MenuItem("HSE/Advanced/Setup Scenario")]
         public static void SetupMenu()
         {
             Setup();
