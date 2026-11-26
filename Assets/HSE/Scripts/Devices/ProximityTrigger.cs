@@ -27,9 +27,10 @@ namespace HSE.Devices
         float _inside;
         bool _fired;
 
-        public void Configure(XRGrabInteractable grab, Transform point, Transform where, float r, float seconds, string id, bool consume = false, bool canRepeat = false)
+        public void Configure(XRGrabInteractable grab, Transform point, Transform where, float r, float seconds, string id, bool consume = false, bool canRepeat = false, bool mustBeHeld = true)
         {
             tool = grab; toolPoint = point; target = where; radius = r; holdSeconds = seconds; eventId = id; consumeTool = consume; repeatable = canRepeat;
+            requireHeld = mustBeHeld;
         }
 
         public void ResetTrigger()
@@ -42,7 +43,10 @@ namespace HSE.Devices
         {
             if (!tool || !target || (_fired && !repeatable)) return;
             var p = toolPoint ? toolPoint : tool.transform;
-            bool near = (p.position - target.position).sqrMagnitude <= radius * radius && (!requireHeld || tool.isSelected);
+            // The tool point (e.g. the needle tip) or the tool itself counts, so the angle it is held at doesn't matter.
+            float r2 = radius * radius;
+            bool close = (p.position - target.position).sqrMagnitude <= r2 || (tool.transform.position - target.position).sqrMagnitude <= r2;
+            bool near = close && (!requireHeld || tool.isSelected);
             if (!near)
             {
                 if (_inside > 0 && repeatable) _fired = false;

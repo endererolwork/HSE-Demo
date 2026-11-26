@@ -124,7 +124,7 @@ for i, key in enumerate(("Accent", "Yellow", "GreenO2")):
 h.tube("PushHandle", "Metal", (-0.3, -0.29, 1.0), (0.3, -0.29, 1.0), 0.013)
 for sx in (-1, 1):
     h.tube("HandleBracket", "Metal", (sx * 0.3, -0.29, 1.0), (sx * 0.3, -0.24, 0.94), 0.01)
-h.slab("BinHolder", "PlasticGray", 0.2, 0.012, 0.18, 0.01, (-0.2, -0.25, 0.75), rot=(0, 0, 0), bevel=0.003)
+h.slab("BinHolder", "PlasticGray", 0.2, 0.012, 0.18, 0.005, (-0.2, -0.25, 0.75), rot=(0, 0, 0), bevel=0.002)
 finish("ProcedureTrolley", "Equipment", (0, 0, 0.55), (1.4, 1.6, 1.4))
 
 # ---------------------------------------------------------------- bedside cabinet (front faces -X towards the bed)

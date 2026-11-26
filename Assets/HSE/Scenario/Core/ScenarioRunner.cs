@@ -104,6 +104,61 @@ namespace HSE.Scenario
             AdvanceToNextMandatory();
         }
 
+        /// <summary>
+        /// Instructor / tester shortcut: skips only the sub-task in progress (e.g. "Dispose of the needle") when the
+        /// current step has sub-tasks, otherwise the whole current step.
+        /// </summary>
+        public void SkipCurrentSubStep()
+        {
+            if (!IsRunning || CurrentStep == null) return;
+            if (CurrentStep is CompositeStep c && c.SkipActiveChild()) return;
+            SkipCurrentStep();
+        }
+
+        /// <summary>
+        /// Instructor / tester shortcut: goes back one sub-task, or to the last sub-task of the previous step when
+        /// the current step is at its start. Only the task list moves back; objects in the room stay where they are.
+        /// </summary>
+        public void GoBackOneStep()
+        {
+            if (!IsRunning || CurrentStep == null) return;
+            if (CurrentStep is CompositeStep c && c.BackOneChild()) return;
+
+            var mandatory = MandatorySteps.ToList();
+            int i = mandatory.IndexOf(CurrentStep);
+            if (i <= 0) return;
+            var current = CurrentStep;
+            var prev = mandatory[i - 1];
+            Unsubscribe(current);
+            current.ResetStep();
+            Report.StepReopened(current);
+            prev.ResetStep();
+            if (prev is CompositeStep pc) pc.PrepareResumeAtLast();
+            prev.MarkReopened();
+            Report.StepReopened(prev);
+            CurrentStep = prev;
+            Run(prev);
+        }
+
+        /// <summary>
+        /// Ends the run now for a valid reason (e.g. the patient refused consent and it was handled correctly).
+        /// Open and remaining steps are marked not applicable, so they don't count against the score.
+        /// </summary>
+        public void EndEarly(string reason)
+        {
+            if (!IsRunning) return;
+            Report.EndedEarlyReason = reason;
+            foreach (var s in steps.Where(s => s && s.State != StepState.Completed))
+            {
+                if (s.State == StepState.Active) { Unsubscribe(s); s.Abort(); }
+                Report.StepEnded(s, s.Requirement == StepRequirement.Mandatory ? StepState.NotApplicable : StepState.Skipped, Clock.Now);
+            }
+            CurrentStep = null;
+            Report.Finish(Clock.Now);
+            IsRunning = false;
+            ScenarioCompleted?.Invoke(Report);
+        }
+
         void AdvanceToNextMandatory()
         {
             CurrentStep = MandatorySteps.FirstOrDefault(s => s.State == StepState.Locked);

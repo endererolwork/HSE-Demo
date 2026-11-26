@@ -43,7 +43,7 @@ namespace HSE.Devices
 
         RectTransform _canvas, _body;
         TextMeshProUGUI _title, _clock;
-        RectTransform _home, _patientScreen, _orderScreen, _confirmScreen;
+        RectTransform _home, _patientScreen, _orderScreen, _confirmScreen, _documentScreen, _specimenScreen;
         TextMeshProUGUI _homeStatus;
 
         public PatientRecord CurrentPatient => _patient;
@@ -57,7 +57,7 @@ namespace HSE.Devices
             _selected.Clear();
             _lastOrder = null;
             _patientTab = PatientTab.Details;
-            _bpMeasured = _vitalsRecorded = false;
+            _bpMeasured = _vitalsRecorded = _escalated = false;
             ShowHome(null);
         }
         public bool IdentityConfirmed => _identityConfirmed;
@@ -73,12 +73,14 @@ namespace HSE.Devices
         {
             Loc.Changed += OnLanguageChanged;
             ClinicalEvents.BloodPressureMeasured += OnBpMeasured;
+            ClinicalEvents.ProcedureEvent += OnProcedure;
         }
 
         void OnDisable()
         {
             Loc.Changed -= OnLanguageChanged;
             ClinicalEvents.BloodPressureMeasured -= OnBpMeasured;
+            ClinicalEvents.ProcedureEvent -= OnProcedure;
         }
 
         /// <summary>Rebuilds the UI in the new language and shows the same screen again.</summary>
@@ -98,6 +100,11 @@ namespace HSE.Devices
 
         public void OnCodeScanned(ScannableCode code)
         {
+            if (code.kind == CodeKind.SpecimenBag)
+            {
+                ShowSpecimen(code);
+                return;
+            }
             if (code.kind != CodeKind.PatientWristband || code.patient == null)
             {
                 ShowHome("<color=#" + ColorUtility.ToHtmlStringRGB(Amber) + ">" + Loc.T("pda.scan.notWristband") + "</color>");
@@ -141,6 +148,8 @@ namespace HSE.Devices
             Tab(tabs, Loc.T("pda.tab.vitals"), _patientTab == PatientTab.Vitals, () => { _patientTab = PatientTab.Vitals; ShowPatient(); });
             Tab(tabs, Loc.T("pda.tab.results"), _patientTab == PatientTab.Results, () => { _patientTab = PatientTab.Results; ShowPatient(); });
             foreach (var t in tabs.GetComponentsInChildren<TextMeshProUGUI>()) t.fontSize = 26;
+            // Next specimen task (print labels / document) sits right under the tabs on every tab, so it is never off-screen.
+            SpecimenActions(col);
 
             var card = Box(col, Card, 0);
             var cardCol = Column(card, 20, 4);
@@ -168,7 +177,7 @@ namespace HSE.Devices
                 var plan = Box(col, Card, 0);
                 var planCol = Column(plan, 20, 6);
                 Label(planCol, Loc.T("pda.carePlan"), 28, Muted, TextAlignmentOptions.Left, true, 38);
-                Label(planCol, p.CarePlan, 34, Ink, TextAlignmentOptions.Left, false, 130);
+                Label(planCol, p.CarePlan, 32, Ink, TextAlignmentOptions.Left, false, 100);
 
                 var orders = Box(col, Card, 0);
                 var ordersCol = Column(orders, 20, 6);
@@ -191,12 +200,17 @@ namespace HSE.Devices
             }
             else
             {
-                MakeButton(col, Loc.T("pda.confirmIdentity"), Green, Color.white, 112, () =>
+                var idRow = HRow(col, 112, 14);
+                MakeButton(idRow, Loc.T("pda.confirmIdentity"), Green, Color.white, 112, () =>
                 {
-                    _identityConfirmed = true;
                     ClinicalEvents.RaiseIdentityConfirmed(_patient);
+                    // Confirming the wrong person does not unlock the record.
+                    if (_patient == ActivePatient.Current) _identityConfirmed = true;
                     ShowPatient();
                 });
+                // GDD branch: the band does not match the patient -> stop and report.
+                MakeButton(idRow, Loc.T("pda.reportMismatch"), RedLight, Red, 112, () => ClinicalEvents.RaiseProcedure("id_mismatch_reported"))
+                    .GetComponentInChildren<TextMeshProUGUI>().fontSize = 28;
             }
             var nav = HRow(col, 112, 14);
             MakeButton(nav, Loc.T("pda.home"), Line, Ink, 112, () => ShowHome(null));
@@ -225,8 +239,21 @@ namespace HSE.Devices
             // Record the bedside measurement into the patient record.
             if (_bpMeasured)
             {
-                bool abnormal = v.Systolic >= 140 || v.Systolic < 100 || v.Diastolic >= 90 || v.Diastolic < 60 || v.HeartRate > 100 || v.HeartRate < 50;
-                if (abnormal) Label(col, Loc.T("pda.vitals.abnormal"), 26, Red, TextAlignmentOptions.Center, true, 70);
+                bool critical = v.Systolic >= 180 || v.Diastolic >= 110 || v.Systolic < 90;
+                bool abnormal = critical || v.Systolic >= 140 || v.Systolic < 100 || v.Diastolic >= 90 || v.Diastolic < 60 || v.HeartRate > 100 || v.HeartRate < 50;
+                if (critical && !_escalated)
+                {
+                    // GDD branch: critical blood pressure must be escalated before carrying on.
+                    Label(col, Loc.T("pda.vitals.critical"), 26, Red, TextAlignmentOptions.Center, true, 70);
+                    MakeButton(col, Loc.T("pda.vitals.escalate"), Red, Color.white, 96, () =>
+                    {
+                        _escalated = true;
+                        ClinicalEvents.RaiseProcedure("bp_escalated");
+                        ShowPatient();
+                    });
+                    return;
+                }
+                if (abnormal) Label(col, Loc.T(critical ? "pda.vitals.escalated" : "pda.vitals.abnormal"), 26, Red, TextAlignmentOptions.Center, true, 70);
                 if (_vitalsRecorded)
                 {
                     var done = Box(col, BlueLight, 70);
@@ -243,7 +270,7 @@ namespace HSE.Devices
             else Label(col, Loc.T("pda.vitals.measureFirst"), 26, Muted, TextAlignmentOptions.Center, false, 60);
         }
 
-        bool _bpMeasured, _vitalsRecorded;
+        bool _bpMeasured, _vitalsRecorded, _escalated;
 
         void OnBpMeasured(HSE.Clinical.Vitals.VitalSample _)
         {
@@ -321,6 +348,160 @@ namespace HSE.Devices
             last.anchorMin = last.anchorMax = Vector2.zero;
             last.sizeDelta = new Vector2(12, 12);
             last.anchoredPosition = P(values.Count - 1);
+        }
+
+        // ------------------------------------------------------------ labels, documentation, specimen dispatch
+
+        BloodDrawSession Draw => FindFirstObjectByType<BloodDrawSession>();
+
+        /// <summary>Print labels after the blood draw, then document the collection.</summary>
+        void SpecimenActions(RectTransform col)
+        {
+            var draw = Draw;
+            if (!draw || !draw.IsDone("tubes_complete")) return;
+            if (!draw.IsDone("labels_printed"))
+            {
+                MakeButton(col, Loc.F("pda.labels.print", draw.RequiredTubes.Count), Blue, Color.white, 96, PrintLabels);
+            }
+            else if (!draw.IsDone("collection_documented"))
+            {
+                MakeButton(col, Loc.T("pda.doc.open"), Blue, Color.white, 96, () => { _docSite = null; _docTolerance = null; ShowDocument(); });
+            }
+        }
+
+        void PrintLabels()
+        {
+            var draw = Draw;
+            if (!draw.IsDone("wristband_rescanned"))
+            {
+                // GDD 5: identity must be verified again before labelling.
+                ClinicalEvents.RaiseProcedureMistake("mistake.verifyBeforeLabel");
+                ShowHome("<color=#" + ColorUtility.ToHtmlStringRGB(Red) + ">" + Loc.T("mistake.verifyBeforeLabel") + "</color>");
+                return;
+            }
+            var printer = FindFirstObjectByType<LabelPrinterDevice>();
+            var fill = FindFirstObjectByType<TubeFilling>(FindObjectsInactive.Include);
+            if (!printer || !fill) return;
+            var tubes = fill.Tubes.Where(t => t && draw.RequiredTubes.Contains(t.name)).Select(t => t.transform);
+            printer.PrintLabels(_patient, tubes, draw.CollectedAt);
+            ClinicalEvents.RaiseProcedure("labels_printed");
+            ShowPatient();
+        }
+
+        string _docSite, _docTolerance;
+
+        void ShowDocument()
+        {
+            _redraw = ShowDocument;
+            Clear(_documentScreen);
+            SetScreen(_documentScreen, Loc.T("pda.doc.title"));
+            var draw = Draw;
+            var col = Column(_documentScreen, 20, 10);
+            Label(col, $"{_patient.fullName}  ·  {_patient.medicalRecordNumber}", 30, Muted, TextAlignmentOptions.Left, false, 42);
+
+            var info = Box(col, Card, 0);
+            var icol = Column(info, 16, 2);
+            Row(icol, Loc.T("pda.doc.time"), draw ? draw.CollectedAt.ToString("dd.MM.yyyy HH:mm") : "-");
+            Row(icol, Loc.T("pda.doc.tubes"), draw ? $"{draw.RequiredTubes.Count}: " + string.Join(", ", draw.RequiredTubes.Select(t => t.Replace("Tube_", "").Replace("_", " "))) : "-", 96);
+            var v = HSE.Clinical.Vitals.VitalsFeed.Current;
+            Row(icol, Loc.T("pda.doc.vitals"), _vitalsRecorded ? $"BP {v.Systolic:0}/{v.Diastolic:0}, HR {v.HeartRate:0}" : "-");
+
+            Label(col, Loc.T("pda.doc.site"), 28, Muted, TextAlignmentOptions.Left, true, 38);
+            var sites = HRow(col, 90, 8);
+            foreach (var site in new[] { "R antecubital", "L antecubital", "R hand" })
+            {
+                var s = site;
+                Tab(sites, s, _docSite == s, () => { _docSite = s; ShowDocument(); });
+            }
+            Label(col, Loc.T("pda.doc.tolerance"), 28, Muted, TextAlignmentOptions.Left, true, 38);
+            var tol = HRow(col, 90, 8);
+            foreach (var option in new[] { "Tolerated well", "Bruising", "Felt faint" })
+            {
+                var o = option;
+                Tab(tol, o, _docTolerance == o, () => { _docTolerance = o; ShowDocument(); });
+            }
+            foreach (var t in sites.GetComponentsInChildren<TextMeshProUGUI>()) t.fontSize = 24;
+            foreach (var t in tol.GetComponentsInChildren<TextMeshProUGUI>()) t.fontSize = 24;
+
+            var warning = Label(col, "", 28, Red, TextAlignmentOptions.Center, true, 70);
+            Spacer(col);
+            var nav = HRow(col, 112, 14);
+            MakeButton(nav, Loc.T("pda.back"), Line, Ink, 112, ShowPatient);
+            MakeButton(nav, Loc.T("pda.doc.save"), Green, Color.white, 112, () =>
+            {
+                if (_docSite == null || _docTolerance == null) { warning.text = Loc.T("pda.doc.incomplete"); return; }
+                if (_docSite != "R antecubital")
+                {
+                    ClinicalEvents.RaiseProcedureMistake("mistake.wrongSiteDocumented");
+                    warning.text = Loc.T("mistake.wrongSiteDocumented");
+                    return;
+                }
+                ClinicalEvents.RaiseProcedure("collection_documented");
+                ShowMessage(Loc.T("pda.doc.done"), Green);
+            });
+        }
+
+        ScannableCode _bagCode;
+
+        /// <summary>GDD 8: scanning the sealed bag links the specimen to patient, request, time, nurse and lab.</summary>
+        void ShowSpecimen(ScannableCode code)
+        {
+            _bagCode = code;
+            _redraw = () => ShowSpecimen(code);
+            Clear(_specimenScreen);
+            SetScreen(_specimenScreen, Loc.T("pda.spec.title"));
+            var draw = Draw;
+            var col = Column(_specimenScreen, 22, 12);
+            var info = Box(col, Card, 0);
+            var icol = Column(info, 16, 2);
+            var p = ActivePatient.Current;
+            Row(icol, Loc.T("pda.spec.code"), code.code);
+            Row(icol, Loc.T("pda.spec.patient"), p ? $"{p.fullName} · {p.medicalRecordNumber}" : "-", 96);
+            Row(icol, Loc.T("pda.spec.request"), _lastOrder != null ? _lastOrder.Reference : "-");
+            Row(icol, Loc.T("pda.doc.time"), draw ? draw.CollectedAt.ToString("dd.MM.yyyy HH:mm") : "-");
+            var printer = FindFirstObjectByType<LabelPrinterDevice>();
+            Row(icol, Loc.T("pda.spec.nurse"), printer ? printer.NurseId : "-");
+            Row(icol, Loc.T("pda.spec.lab"), "Central Laboratory");
+            Spacer(col);
+            if (_lastOrder == null)
+            {
+                Label(col, Loc.T("pda.spec.noRequest"), 30, Red, TextAlignmentOptions.Center, true, 90);
+                return;
+            }
+            if (draw && draw.IsDone("dispatch_requested"))
+            {
+                var box = Box(col, BlueLight, 90);
+                Label(box, Loc.T("pda.spec.placeInTube"), 30, Navy, TextAlignmentOptions.Center, true);
+                return;
+            }
+            MakeButton(col, Loc.T("pda.spec.send"), Green, Color.white, 112, () =>
+            {
+                ClinicalEvents.RaiseProcedure("dispatch_requested");
+                ShowSpecimen(code);
+            });
+        }
+
+        void ShowMessage(string text, Color color)
+        {
+            _redraw = () => ShowMessage(text, color);
+            Clear(_specimenScreen);
+            SetScreen(_specimenScreen, "");
+            var col = Column(_specimenScreen, 30, 20);
+            Spacer(col);
+            Label(col, text, 44, color, TextAlignmentOptions.Center, true, 160);
+            Spacer(col);
+            MakeButton(col, Loc.T("pda.home"), Blue, Color.white, 112, () => { if (_patient) ShowPatient(); else ShowHome(null); });
+        }
+
+        void OnProcedure(string id)
+        {
+            if (id == "specimen_dispatched") ShowMessage(Loc.T("pda.spec.dispatched"), Green);
+            if (id == "wristband_replaced")
+            {
+                _patient = null;
+                _identityConfirmed = false;
+                ShowHome("<color=#" + ColorUtility.ToHtmlStringRGB(Amber) + ">" + Loc.T("pda.newWristband") + "</color>");
+            }
         }
 
         void ShowOrder()
@@ -445,6 +626,8 @@ namespace HSE.Devices
             };
             _lastOrder.Reference = $"LAB-{_lastOrder.Time:yyMMdd}-{UnityEngine.Random.Range(1000, 9999)}";
             ClinicalEvents.RaiseLabOrderSubmitted(_lastOrder);
+            var printer = FindFirstObjectByType<LabelPrinterDevice>();
+            if (printer) printer.PrintRequestSlip(_lastOrder); // goes in the specimen bag's outer pocket
             ShowConfirm();
         }
 
@@ -491,6 +674,8 @@ namespace HSE.Devices
             _body.offsetMax = new Vector2(0, -160);
 
             _home = MakeScreen("Home");
+            _documentScreen = MakeScreen("Document");
+            _specimenScreen = MakeScreen("Specimen");
             _patientScreen = MakeScreen("Patient");
             _orderScreen = MakeScreen("Order");
             _confirmScreen = MakeScreen("Confirm");
@@ -529,7 +714,7 @@ namespace HSE.Devices
 
         void SetScreen(RectTransform screen, string title)
         {
-            foreach (var s in new[] { _home, _patientScreen, _orderScreen, _confirmScreen }) s.gameObject.SetActive(s == screen);
+            foreach (var s in new[] { _home, _patientScreen, _orderScreen, _confirmScreen, _documentScreen, _specimenScreen }) s.gameObject.SetActive(s == screen);
             _title.text = title;
         }
 

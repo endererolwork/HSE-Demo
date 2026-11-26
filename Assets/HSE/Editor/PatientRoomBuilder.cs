@@ -78,6 +78,7 @@ namespace HSE.EditorTools
             PdaBuilder.SetupInScene();
             ScenarioBuilder.Setup();
             new GameObject("SceneBuildStamp").AddComponent<SceneBuildStamp>().version = SceneBuildStamp.CurrentVersion;
+            QuestOptimizer.Apply();
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddSceneToBuildSettings(ScenePath);
@@ -599,8 +600,9 @@ namespace HSE.EditorTools
             var holder = Group("VacutainerHolder", items, new Vector3(0.0f, 0.03f, -0.1f)).transform;
             holder.localRotation = Quaternion.Euler(0, 0, 90);
             Cyl("Barrel", holder, Vector3.zero, 0.022f, 0.08f, M("Glass"));
-            Cyl("Needle", holder, new Vector3(0, -0.055f, 0), 0.003f, 0.035f, M("Metal"));
-            Cyl("NeedleCap", holder, new Vector3(0, -0.06f, 0), 0.01f, 0.04f, M("CapGreen"));
+            // Green hub at the front of the barrel with a thin steel needle sticking out (tip at local y = -0.095).
+            Cyl("NeedleHub", holder, new Vector3(0, -0.046f, 0), 0.012f, 0.014f, M("CapGreen"));
+            NoCol(Cyl("Needle", holder, new Vector3(0, -0.0725f, 0), 0.0016f, 0.045f, M("Metal")));
 
             var sharps = Group("SharpsContainer", items, new Vector3(0.24f, 0, 0.12f)).transform;
             Box("Body", sharps, new Vector3(0, 0.09f, 0), new Vector3(0.15f, 0.18f, 0.13f), M("Yellow"));

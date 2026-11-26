@@ -116,7 +116,7 @@ namespace HSE.EditorTools
             },
         };
 
-        [MenuItem("HSE/Create or Update Patients")]
+        [MenuItem("HSE/Advanced/Create or Update Patients")]
         public static List<PatientRecord> CreateOrUpdate()
         {
             if (!AssetDatabase.IsValidFolder("Assets/HSE/Data")) AssetDatabase.CreateFolder("Assets/HSE", "Data");

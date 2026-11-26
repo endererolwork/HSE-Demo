@@ -22,7 +22,8 @@ namespace HSE.Training.Steps
             ClinicalEvents.ProcedureMistake += OnMistake;
             // Done out of order already (e.g. tourniquet released early)? Then the step is satisfied on arrival.
             var session = FindFirstObjectByType<BloodDrawSession>();
-            if (session && session.IsDone(completeOnEvent)) Complete();
+            // Not when the trainee went back to this step on purpose: then the action is done again.
+            if (!Reopened && session && session.IsDone(completeOnEvent)) Complete();
         }
 
         protected override void OnEnd()

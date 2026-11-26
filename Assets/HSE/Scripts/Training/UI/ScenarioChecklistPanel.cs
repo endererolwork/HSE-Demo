@@ -38,7 +38,8 @@ namespace HSE.Training.UI
 
         /// <summary>Raised when the trainee presses "Next patient" on the results screen.</summary>
         public event System.Action NextRequested;
-        RectTransform _nextButton;
+        RectTransform _nextButton, _skipButton, _backButton;
+        TextMeshProUGUI _skipText, _backText;
 
         /// <summary>Opens the full list. With autoHide it folds back into the tab after a while.</summary>
         public void Expand(bool autoHide = true)
@@ -118,6 +119,12 @@ namespace HSE.Training.UI
             {
                 _nextSearch = Time.time + 1f;
                 TryAttach();
+                // Sub-tasks advance without runner events (e.g. the next tube); keep the instruction current.
+                if (runner && runner.IsRunning && _finished == null && _instruction)
+                {
+                    var text = InstructionText();
+                    if (text != _instruction.text) _instruction.text = text;
+                }
             }
             if (_expanded && Time.time >= _hideAt) Collapse();
             if (_toast && !string.IsNullOrEmpty(_toast.text) && Time.time > _toastUntil) _toast.text = "";
@@ -133,6 +140,22 @@ namespace HSE.Training.UI
             Expand(autoHide: true);
         }
         void OnChanged(ScenarioStep _) => Redraw();
+        void BackStep()
+        {
+            if (!runner || !runner.IsRunning) return;
+            runner.GoBackOneStep();
+            Redraw();
+            Expand(autoHide: true);
+        }
+
+        void SkipStep()
+        {
+            if (!runner || !runner.IsRunning) return;
+            runner.SkipCurrentSubStep();
+            Redraw();
+            Expand(autoHide: true);
+        }
+
 
         void OnMistake(ScenarioStep step, string message)
         {
@@ -148,20 +171,44 @@ namespace HSE.Training.UI
             Expand(autoHide: false);
             _tabText.text = Loc.T("checklist.done");
             _nextButton.gameObject.SetActive(true);
+            _skipButton.gameObject.SetActive(false);
+            _backButton.gameObject.SetActive(false);
             _nextButton.GetComponentInChildren<TextMeshProUGUI>().text = Loc.T("session.next");
             _header.text = $"<b>{ScenarioTitle}</b>  ·  {Loc.T("checklist.done")}";
             _instruction.text = Loc.T("checklist.results");
-            _list.text =
-                $"{Loc.T("checklist.score")}: <b>{report.Score} / {report.MaxScore}</b>\n" +
-                $"{Loc.T("checklist.mistakes")}: <b>{report.MistakeCount}</b>\n" +
-                $"{Loc.T("checklist.time")}: <b>{(int)(t / 60):00}:{(int)(t % 60):00}</b>\n" +
-                $"{Loc.T("checklist.extrasDone")}: <b>{report.CompletedCount(StepRequirement.Optional)} / {report.Count(StepRequirement.Optional)}</b>";
+            var sb = new StringBuilder();
+            if (!string.IsNullOrEmpty(report.EndedEarlyReason)) sb.Append($"<color=#F2B84B>{report.EndedEarlyReason}</color>\n");
+            sb.Append($"{Loc.T("checklist.score")}: <b>{report.Score} / {report.MaxScore}</b>   {Loc.T("checklist.mistakes")}: <b>{report.MistakeCount}</b>   {Loc.T("checklist.time")}: <b>{(int)(t / 60):00}:{(int)(t % 60):00}</b>\n");
+            foreach (var line in ScoreCard.Build(report))
+            {
+                string value = line.NotApplicable && line.Max == 0 ? "n/a" : $"{line.Score}/{line.Max}";
+                string color = line.Max > 0 && line.Score == line.Max ? "#4CAF6A" : line.Mistakes > 0 || line.Score < line.Max ? "#F2B84B" : "#C9CFD8";
+                sb.Append($"<size=85%><color={color}>{line.Name}: <b>{value}</b>{(line.Mistakes > 0 ? $"  ({line.Mistakes}x)" : "")}</color></size>\n");
+            }
+            sb.Append($"<size=85%>{Loc.T("checklist.extrasDone")}: <b>{report.CompletedCount(StepRequirement.Optional)} / {report.Count(StepRequirement.Optional)}</b></size>");
+            _list.text = sb.ToString();
         }
 
         // ------------------------------------------------------------ drawing
 
         ScenarioReport _finished;
         string ScenarioTitle => runner ? Loc.TOr("scenario.title", runner.Title) : "";
+
+        /// <summary>The current step's title plus the instruction of the sub-task being done right now.</summary>
+        string InstructionText()
+        {
+            var current = runner ? runner.CurrentStep : null;
+            if (!current) return "";
+            var leaf = current;
+            while (leaf is CompositeStep c)
+            {
+                var active = c.Children.FirstOrDefault(x => x && x.State == StepState.Active);
+                if (!active) break;
+                leaf = active;
+            }
+            string detail = leaf == current ? StepText.Instruction(current) : $"<b>{StepText.Title(leaf)}:</b> {StepText.Instruction(leaf)}";
+            return $"<b>{StepText.Title(current)}</b>\n<size=80%>{detail}</size>";
+        }
 
         void Redraw()
         {
@@ -171,9 +218,12 @@ namespace HSE.Training.UI
             int done = mandatory.Count(s => s.State == StepState.Completed || s.State == StepState.Skipped);
             _header.text = $"<b>{ScenarioTitle}</b>  ·  {done}/{mandatory.Count}";
             _tabText.text = Loc.F("checklist.tab", done, mandatory.Count);
+            _skipText.text = Loc.T("checklist.skip");
+            _skipButton.gameObject.SetActive(runner.IsRunning);
+            _backText.text = Loc.T("checklist.back");
+            _backButton.gameObject.SetActive(runner.IsRunning);
 
-            var current = runner.CurrentStep;
-            _instruction.text = current ? $"<b>{StepText.Title(current)}</b>\n<size=80%>{StepText.Instruction(current)}</size>" : "";
+            _instruction.text = InstructionText();
 
             var sb = new StringBuilder();
             for (int i = 0; i < mandatory.Count; i++) AppendLine(sb, mandatory[i], (i + 1) + ".");
@@ -244,7 +294,8 @@ namespace HSE.Training.UI
             var head = Panel(rt, new Color(0.12f, 0.37f, 0.75f, 0.95f));
             Top(head, 0, 70);
             _header = Text(head, 30, Color.white, TextAlignmentOptions.MidlineLeft);
-            Stretch(_header.rectTransform, 22, 0, 90, 0);
+            Stretch(_header.rectTransform, 22, 0, 360, 0);
+            _header.enableAutoSizing = true; _header.fontSizeMin = 16; _header.fontSizeMax = 30;
 
             var close = Panel(head, new Color(1, 1, 1, 0.15f));
             close.anchorMin = close.anchorMax = new Vector2(1f, 0.5f);
@@ -256,6 +307,29 @@ namespace HSE.Training.UI
             var x = Text(close, 40, Color.white, TextAlignmentOptions.Center);
             x.text = "×";
             Stretch(x.rectTransform, 0, 0, 0, 0);
+
+            // Instructor/tester shortcut: skips the sub-task that is active now (counted as a mistake in the report).
+            _skipButton = Panel(head, new Color(0.95f, 0.65f, 0.15f, 0.9f));
+            _skipButton.anchorMin = _skipButton.anchorMax = new Vector2(1f, 0.5f);
+            _skipButton.pivot = new Vector2(1f, 0.5f);
+            _skipButton.sizeDelta = new Vector2(130, 58);
+            _skipButton.anchoredPosition = new Vector2(-84, 0);
+            _skipButton.GetComponent<Image>().raycastTarget = true;
+            _skipButton.gameObject.AddComponent<Button>().onClick.AddListener(SkipStep);
+            _skipText = Text(_skipButton, 26, Color.white, TextAlignmentOptions.Center);
+            _skipText.fontStyle = FontStyles.Bold;
+            Stretch(_skipText.rectTransform, 0, 0, 0, 0);
+
+            _backButton = Panel(head, new Color(0.35f, 0.45f, 0.6f, 0.95f));
+            _backButton.anchorMin = _backButton.anchorMax = new Vector2(1f, 0.5f);
+            _backButton.pivot = new Vector2(1f, 0.5f);
+            _backButton.sizeDelta = new Vector2(130, 58);
+            _backButton.anchoredPosition = new Vector2(-222, 0);
+            _backButton.GetComponent<Image>().raycastTarget = true;
+            _backButton.gameObject.AddComponent<Button>().onClick.AddListener(BackStep);
+            _backText = Text(_backButton, 26, Color.white, TextAlignmentOptions.Center);
+            _backText.fontStyle = FontStyles.Bold;
+            Stretch(_backText.rectTransform, 0, 0, 0, 0);
 
             var instr = Panel(rt, new Color(1, 1, 1, 0.08f));
             Top(instr, 82, 150);

@@ -55,11 +55,11 @@ h.soft_box("Pillow", "Sheet", (0.62, 0.34, 0.12), (0, 0.58, 0.145), parent=pivot
 
 h.slab("Blanket", "Blanket", 0.96, 0.9, 0.05, 0.03, (0, -0.6, 0.615), bevel=0.022, bevel_seg=4)
 for sx in (-1, 1):
-    h.slab("BlanketDrape", "Blanket", 0.014, 0.9, 0.26, 0.01, (sx * 0.478, -0.6, 0.5), bevel=0.006)
+    h.slab("BlanketDrape", "Blanket", 0.014, 0.9, 0.26, 0.006, (sx * 0.478, -0.6, 0.5), bevel=0.002)
     h.soft_box("LegBump", "Blanket", (0.17, 0.85, 0.08), (sx * 0.11, -0.58, 0.64))
     h.soft_box("FootBump", "Blanket", (0.14, 0.16, 0.12), (sx * 0.12, -0.92, 0.68))
 h.soft_box("BlanketFold", "Sheet", (0.97, 0.17, 0.045), (0, -0.155, 0.645))
-h.slab("BlanketFootDrape", "Blanket", 0.96, 0.014, 0.2, 0.01, (0, -1.048, 0.53), bevel=0.006)
+h.slab("BlanketFootDrape", "Blanket", 0.96, 0.014, 0.2, 0.006, (0, -1.048, 0.53), bevel=0.002)
 
 # ---------------------------------------------------------------- head and foot boards
 h.slab("Headboard", "PlasticWhite", 1.0, 0.58, 0.05, 0.1, (0, 1.075, 0.75), rot=(90, 0, 0), bevel=0.014)

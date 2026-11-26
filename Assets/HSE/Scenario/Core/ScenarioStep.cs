@@ -77,6 +77,22 @@ namespace HSE.Scenario
         {
             if (State == StepState.Active) Finish(StepState.Skipped);
             State = StepState.Locked;
+            Reopened = false;
+        }
+
+        /// <summary>
+        /// True when the trainee went back to this step: it should wait for the action again instead of counting
+        /// something that already happened earlier.
+        /// </summary>
+        public bool Reopened { get; private set; }
+
+        /// <summary>Marks a locked step as gone back to (see <see cref="Reopened"/>). Call after ResetStep.</summary>
+        public void MarkReopened() => Reopened = true;
+
+        /// <summary>Counts a locked step as done without running it (used when resuming a group at a later sub-task).</summary>
+        public void MarkCompletedWithoutRunning()
+        {
+            if (State == StepState.Locked) State = StepState.Completed;
         }
 
         // ------------------------------------------------------------ for subclasses
@@ -100,6 +116,18 @@ namespace HSE.Scenario
             foreach (var t in highlightTargets)
                 if (t) Context.Highlighter.Flash(t, HighlightStyle.Error);
             MistakeMade?.Invoke(this, message);
+        }
+
+        /// <summary>
+        /// Swaps what the step points at while it runs (e.g. one sample tube after another).
+        /// The old targets go dark and the new ones light up straight away if the step is active.
+        /// </summary>
+        protected void SetHighlightTargets(IEnumerable<GameObject> targets)
+        {
+            bool active = State == StepState.Active;
+            if (active) SetGuidance(false);
+            highlightTargets = targets != null ? new List<GameObject>(targets) : new List<GameObject>();
+            if (active) SetGuidance(true);
         }
 
         /// <summary>Lets composite steps forward their children's mistakes as their own.</summary>

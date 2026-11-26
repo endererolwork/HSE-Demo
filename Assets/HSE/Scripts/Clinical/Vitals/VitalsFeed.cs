@@ -79,8 +79,9 @@ namespace HSE.Clinical.Vitals
         {
             if (_patient == null) return Current;
             var c = Current;
-            c.Systolic = Mathf.Round(_patient.systolic + Jitter(6));
-            c.Diastolic = Mathf.Round(_patient.diastolic + Jitter(4));
+            bool critical = TrainingBranch.Current == Branch.CriticalBloodPressure;
+            c.Systolic = critical ? 186 + Mathf.Round(Jitter(3)) : Mathf.Round(_patient.systolic + Jitter(6));
+            c.Diastolic = critical ? 112 + Mathf.Round(Jitter(2)) : Mathf.Round(_patient.diastolic + Jitter(4));
             c.Time = DateTime.Now;
             Current = c;
             Updated?.Invoke();

@@ -203,6 +203,25 @@ namespace HSE.Scenario.Tests
         }
 
         [Test]
+        public void GoBack_ReopensPreviousStep()
+        {
+            var a = Step("a");
+            var b = Step("b");
+            Play(a, b);
+            a.Finish();
+            Assert.AreEqual(StepState.Active, b.State);
+
+            _runner.GoBackOneStep();
+            Assert.AreEqual(StepState.Active, a.State);
+            Assert.AreEqual(StepState.Locked, b.State);
+            Assert.IsTrue(a.Reopened);
+            Assert.AreSame(a, _runner.CurrentStep);
+
+            a.Finish();
+            Assert.AreEqual(StepState.Active, b.State);
+        }
+
+        [Test]
         public void Restart_ResetsSteps()
         {
             var a = Step("a");
@@ -211,6 +230,28 @@ namespace HSE.Scenario.Tests
             _runner.StartScenario();
             Assert.AreEqual(StepState.Active, a.State);
             Assert.AreEqual(0, _runner.Report.Score);
+        }
+
+        [Test]
+        public void EndEarly_MarksRemainingNotApplicable_AndExcludesThemFromMax()
+        {
+            var a = Step("a", points: 10);
+            var b = Step("b", points: 10);
+            var c = Step("c", points: 10);
+            ScenarioReport finished = null;
+            _runner.ScenarioCompleted += r => finished = r;
+            Play(a, b, c);
+
+            a.Finish();
+            _runner.EndEarly("consent refused");
+
+            Assert.NotNull(finished);
+            Assert.IsFalse(_runner.IsRunning);
+            Assert.AreEqual(StepState.NotApplicable, finished.For(b).Outcome);
+            Assert.AreEqual(StepState.NotApplicable, finished.For(c).Outcome);
+            Assert.AreEqual(10, finished.MaxScore);
+            Assert.AreEqual(10, finished.Score);
+            Assert.AreEqual("consent refused", finished.EndedEarlyReason);
         }
     }
 }
