@@ -91,6 +91,9 @@ namespace HSE.EditorTools
             var dialogue = new GameObject("PatientDialogue").AddComponent<PatientDialogue>();
             dialogue.transform.SetParent(root.transform, false);
             dialogue.Bind(patientHead);
+            // Breathing, blinking, looking at the nurse, reactions to the procedure.
+            var behaviour = root.AddComponent<PatientBehaviour>();
+            behaviour.Bind(patientHead, Find("Torso"), new[] { Find("Eye_L"), Find("Eye_R") }, dialogue);
             var greet = Step<GreetingStep>("greeting", "Introduce yourself",
                 "Greet the patient, say who you are and ask for their full name and date of birth.", StepRequirement.Mandatory, 5, HighlightStyle.Hint,
                 patientHead ? patientHead.gameObject : null);
@@ -232,6 +235,7 @@ namespace HSE.EditorTools
 
             // "Next patient" on the results screen restarts with a different patient.
             root.AddComponent<ScenarioSession>().Bind(runner, roster, pda, panel);
+            root.AddComponent<ResultsLogger>().Bind(runner); // JSON + sessions.csv for the instructor
 
             // Simulated lab and its report panel (results and comments are stored on each patient).
             root.AddComponent<HSE.Clinical.Lab.LabService>();
@@ -573,6 +577,7 @@ namespace HSE.EditorTools
                 h.settings.touchGlow = false;
                 h.settings.hologram = false;
             }
+            h.settings.glowPasses = Mathf.Min(h.settings.glowPasses, 2); // Quest: 2 glow passes is plenty
             h.highlighted = false;
             EditorUtility.SetDirty(h);
         }

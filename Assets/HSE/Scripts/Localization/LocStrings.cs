@@ -271,7 +271,10 @@ namespace HSE.Localization
             ["score.documentation"] = ("Documentation", "Dokümantasyon"),
             ["score.tests"] = ("Test selection", "Test seçimi"),
             ["score.dispatch"] = ("Sealing and dispatch", "Paketleme ve gönderme"),
-            ["score.communication"] = ("Communication and safety", "İletişim ve güvenlik"),            ["sample.blood"] = ("BLOOD", "KAN"),
+            ["score.communication"] = ("Communication and safety", "İletişim ve güvenlik"),            ["react.tourniquet"] = ("It's a bit tight.", "Biraz sıkıyor."),
+            ["react.cold"] = ("Ooh, that's cold.", "Ay, soğukmuş."),
+            ["react.needle"] = ("Ouch... it stings a little.", "Ay... biraz acıdı."),
+            ["react.thanks"] = ("Thank you, that wasn't too bad.", "Teşekkürler, çok kötü değildi."),            ["sample.blood"] = ("BLOOD", "KAN"),
             ["sample.urine"] = ("URINE", "İDRAR"),
             ["sample.other"] = ("OTHER", "DİĞER"),
         };

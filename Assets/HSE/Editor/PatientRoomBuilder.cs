@@ -78,6 +78,7 @@ namespace HSE.EditorTools
             PdaBuilder.SetupInScene();
             ScenarioBuilder.Setup();
             new GameObject("SceneBuildStamp").AddComponent<SceneBuildStamp>().version = SceneBuildStamp.CurrentVersion;
+            QuestOptimizer.Apply();
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AddSceneToBuildSettings(ScenePath);
