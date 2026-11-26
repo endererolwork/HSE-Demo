@@ -145,14 +145,16 @@ namespace HSE.EditorTools
                 consent,
                 P("apply_tourniquet", "Apply the tourniquet", "Put the tourniquet on the upper arm, above the elbow.", "tourniquet_on", draw.Tourniquet),
                 P("clean_site", "Clean the site", "Wipe the inside of the elbow with an alcohol swab and let it dry.", "site_cleaned", draw.Swab),
-                P("insert_needle", "Insert the needle", "Bring the needle to the inside of the elbow at a shallow angle (15-30 degrees).", "needle_in", draw.Holder),
-                P("fill_tubes", "Fill the tubes", "Push each tube needed for the ordered tests onto the holder until it fills.", "tubes_complete", draw.Rack),
+                P("insert_needle", "Insert the needle", "Pick up the holder and touch the needle tip to the blue hologram on the inside of the elbow. The needle goes in by itself and stays in the vein.", "needle_in", draw.Holder),
+                P("fill_tubes", "Fill the tubes", "Touch each tube needed for the ordered tests to the back of the holder and hold it there until it fills with blood.", "tubes_complete", draw.Rack),
                 P("release_tourniquet", "Release the tourniquet", "Remove the tourniquet before taking the needle out.", "tourniquet_off", draw.Tourniquet),
-                P("withdraw_needle", "Withdraw the needle", "Take the needle out of the arm.", "needle_out", draw.Holder),
+                P("withdraw_needle", "Withdraw the needle", "Grab the holder and pull the needle out of the arm.", "needle_out", draw.Holder),
                 P("dispose_needle", "Dispose of the needle", "Put the needle straight into the sharps container.", "needle_disposed", draw.Sharps),
                 P("cover_site", "Cover the site", "Press gauze on the puncture site.", "site_covered", draw.Gauze),
             };
             blood.SetChildren(drawSteps, CompositeStep.Order.InSequence);
+            if (draw.NeedleGhost) draw.NeedleGhost.AddComponent<ShowWhileStepActive>().Bind(drawSteps[3]);
+            if (draw.TubeGhost) draw.TubeGhost.AddComponent<ShowWhileStepActive>().Bind(drawSteps[4]);
 
             // ---------------- GDD 5: verify identity again, print and apply labels
             var spec = SetupSpecimenHandling(root.transform);
@@ -338,7 +340,7 @@ namespace HSE.EditorTools
             return go;
         }
 
-        struct DrawKit { public Transform Tourniquet, Swab, Holder, Rack, Sharps, Gauze; }
+        struct DrawKit { public Transform Tourniquet, Swab, Holder, Rack, Sharps, Gauze; public GameObject NeedleGhost, TubeGhost; }
 
         static XRGrabInteractable MakeGrab(Transform t)
         {
@@ -398,15 +400,22 @@ namespace HSE.EditorTools
 
             if (holder)
             {
-                // The holder lies on its side on the trolley; its needle points along local -Y.
-                var tip = Child(holder.transform, "NeedleTip", new Vector3(0, -0.075f, 0), Quaternion.identity);
-                var dir = Child(holder.transform, "NeedleDir", new Vector3(0, -0.05f, 0), Quaternion.LookRotation(Vector3.down, Vector3.forward));
+                // The holder lies on its side on the trolley; its needle points along local -Y (tip at y = -0.095).
+                var tipLocal = new Vector3(0, -0.095f, 0);
+                var tip = Child(holder.transform, "NeedleTip", tipLocal, Quaternion.identity);
                 var port = Child(holder.transform, "HolderPort", new Vector3(0, 0.05f, 0), Quaternion.identity);
                 NeedleInsertion needle = null;
                 if (site)
                 {
+                    // Correct pose: needle pointing up the arm towards the shoulder (+Z), 20 degrees into the skin,
+                    // tip 1 cm in the vein. The pose root is where the holder rests once inserted.
+                    var into = Quaternion.Euler(20, 0, 0) * Vector3.forward;
+                    var rot = Quaternion.FromToRotation(Vector3.up, -into);
+                    var pose = Child(site, "NeedleInsertedPose", into * 0.01f - rot * tipLocal, rot);
+                    kit.NeedleGhost = HologramHolder(pose);
+
                     needle = site.gameObject.AddComponent<NeedleInsertion>();
-                    needle.Configure(holder, tip, dir, site);
+                    needle.Configure(holder, tip, site, pose);
                 }
 
                 var bloodMat = BloodMaterial();
@@ -428,6 +437,13 @@ namespace HSE.EditorTools
                 }
                 if (needle) holder.gameObject.AddComponent<TubeFilling>().Configure(needle, port, tubes);
 
+                // Hologram tube on the back of the holder: "push a tube on here".
+                var tubeGhost = new GameObject("TubeGhost").transform;
+                tubeGhost.SetParent(port, false);
+                Part(tubeGhost, "Body", PrimitiveType.Cylinder, new Vector3(0, 0.04f, 0), new Vector3(0.016f, 0.05f, 0.016f), HologramMaterial());
+                Part(tubeGhost, "Cap", PrimitiveType.Cylinder, new Vector3(0, 0.0f, 0), new Vector3(0.02f, 0.011f, 0.02f), HologramMaterial());
+                kit.TubeGhost = tubeGhost.gameObject;
+
                 if (kit.Sharps)
                 {
                     var mouth = Child(kit.Sharps, "Opening", new Vector3(0, 0.2f, 0), Quaternion.identity);
@@ -447,10 +463,27 @@ namespace HSE.EditorTools
                 m = new Material(Shader.Find("Universal Render Pipeline/Lit"));
                 AssetDatabase.CreateAsset(m, path);
             }
-            m.SetColor("_BaseColor", new Color(0.45f, 0.02f, 0.03f));
+            m.SetColor("_BaseColor", new Color(0.62f, 0.03f, 0.05f));
             m.SetFloat("_Smoothness", 0.7f);
             EditorUtility.SetDirty(m);
             return m;
+        }
+
+        static Material HologramMaterial() => GuideMaterial("Hologram", new Color(0.25f, 0.9f, 1f, 0.35f), true);
+
+        /// <summary>A see-through copy of the vacutainer holder showing where and how the needle goes in.</summary>
+        static GameObject HologramHolder(Transform pose)
+        {
+            var root = new GameObject("NeedleGhost").transform;
+            root.SetParent(pose, false);
+            var m = HologramMaterial();
+            Part(root, "Barrel", PrimitiveType.Cylinder, Vector3.zero, new Vector3(0.022f, 0.04f, 0.022f), m);
+            Part(root, "Hub", PrimitiveType.Cylinder, new Vector3(0, -0.046f, 0), new Vector3(0.012f, 0.007f, 0.012f), m);
+            Part(root, "Needle", PrimitiveType.Cylinder, new Vector3(0, -0.0725f, 0), new Vector3(0.0025f, 0.0225f, 0.0025f), m);
+            // Target ring on the skin at the puncture point.
+            var ring = Part(pose.parent, "PunctureMarker", PrimitiveType.Cylinder, new Vector3(0, 0.002f, 0), new Vector3(0.03f, 0.0008f, 0.03f), m);
+            ring.transform.SetParent(root, true);
+            return root.gameObject;
         }
 
         static T ChildStep<T>(ScenarioStep parent, string id, string title, string instruction, GameObject target) where T : ScenarioStep
@@ -519,6 +552,16 @@ namespace HSE.EditorTools
             label.color = Color.white;
 
             var interactable = button.AddComponent<XRSimpleInteractable>();
+            // The monitor itself is an interactable ("check the monitor") and would otherwise also claim the
+            // button's collider; give it an explicit list without the button.
+            var monitorInteractable = monitor.GetComponent<XRBaseInteractable>();
+            if (monitorInteractable)
+            {
+                monitorInteractable.colliders.Clear();
+                foreach (var c in monitor.GetComponentsInChildren<Collider>(true))
+                    if (c.gameObject != button) monitorInteractable.colliders.Add(c);
+                EditorUtility.SetDirty(monitorInteractable);
+            }
             var pokeFilter = System.Type.GetType("UnityEngine.XR.Interaction.Toolkit.Filtering.XRPokeFilter, Unity.XR.Interaction.Toolkit");
             if (pokeFilter != null) button.AddComponent(pokeFilter);
 
