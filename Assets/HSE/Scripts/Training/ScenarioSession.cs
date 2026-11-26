@@ -48,6 +48,7 @@ namespace HSE.Training
         {
             if (roster) roster.ApplyNext();
             ResetPda();
+            foreach (var item in FindObjectsByType<ReturnHome>(FindObjectsSortMode.None)) item.SendHome(); // e.g. the BP cuff
             if (runner) runner.StartScenario();
         }
 

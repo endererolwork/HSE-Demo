@@ -105,6 +105,16 @@ namespace HSE.EditorTools
             glove.SetTarget(gloves);
             hygiene.SetChildren(new ScenarioStep[] { rub, glove }, CompositeStep.Order.InSequence);
 
+            // ---------------- GDD step 2: blood pressure (cuff on the arm -> NIBP on the monitor -> record on the PDA)
+            var cuff = Find("BP_Cuff");
+            var nibpButton = SetupBloodPressure(cuff, Find("VitalsMonitor"), Find("UpperBody"));
+            var bp = Step<CompositeStep>("blood_pressure", "Measure blood pressure",
+                "Put the cuff on the patient's right upper arm, start NIBP on the monitor, then record the values on the PDA.", StepRequirement.Mandatory, 15, HighlightStyle.Objective);
+            var applyCuff = ChildStep<ApplyCuffStep>(bp, "apply_cuff", "Apply the cuff", "Take the cuff from the wall and place it on the patient's right upper arm.", cuff ? cuff.gameObject : null);
+            var measure = ChildStep<MeasureBloodPressureStep>(bp, "measure_bp", "Start NIBP", "Press NIBP START on the vital signs monitor.", nibpButton);
+            var record = ChildStep<RecordVitalsStep>(bp, "record_vitals", "Record vitals", "On the PDA Vitals page, check the values and press Record.", pda ? pda.gameObject : null);
+            bp.SetChildren(new ScenarioStep[] { applyCuff, measure, record }, CompositeStep.Order.InSequence);
+
             var order = Step<SubmitLabOrderStep>("lab_order", "Send the lab request",
                 "Open \"Lab Request\" on the PDA, select the tests the physician ordered and send.", StepRequirement.Mandatory, 20, HighlightStyle.Objective,
                 pda ? pda.gameObject : null);
@@ -119,7 +129,7 @@ namespace HSE.EditorTools
             checkMonitor.SetTarget(monitor, onSelect: true, onActivate: true, onHover: true);
 
             runner.Configure("Blood Collection and Lab Request",
-                new ScenarioStep[] { grab, approach, scan, confirm, hygiene, order, readBoard, checkMonitor },
+                new ScenarioStep[] { grab, approach, scan, confirm, hygiene, bp, order, readBoard, checkMonitor },
                 highlighter, autoPlay: false); // starts when a language is picked at the entrance
 
             var guide = new GameObject("Guide").AddComponent<ScenarioGuide>();
@@ -177,6 +187,83 @@ namespace HSE.EditorTools
             Debug.Log("[HSE] Scenario set up with " + runner.Steps.Count + " steps.");
         }
 
+        static T ChildStep<T>(ScenarioStep parent, string id, string title, string instruction, GameObject target) where T : ScenarioStep
+        {
+            var go = new GameObject(id);
+            go.transform.SetParent(parent.transform, false);
+            var s = go.AddComponent<T>();
+            s.Configure(id, title, instruction, StepRequirement.Mandatory, 0, target ? new[] { target } : null, HighlightStyle.Objective);
+            return s;
+        }
+
+        /// <summary>Makes the cuff grabbable, adds the arm socket and the NIBP START button. Returns the button.</summary>
+        static GameObject SetupBloodPressure(Transform cuff, Transform monitor, Transform upperBody)
+        {
+            if (cuff)
+            {
+                var rb = cuff.GetComponent<Rigidbody>();
+                if (!rb) rb = cuff.gameObject.AddComponent<Rigidbody>();
+                rb.isKinematic = true;
+                rb.useGravity = false;
+                var grab = cuff.GetComponent<XRGrabInteractable>();
+                if (!grab) grab = cuff.gameObject.AddComponent<XRGrabInteractable>();
+                grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
+                grab.throwOnDetach = false;
+                grab.useDynamicAttach = true;
+                if (!cuff.GetComponent<ReturnHome>()) cuff.gameObject.AddComponent<ReturnHome>();
+            }
+
+            if (upperBody && cuff)
+            {
+                // Mid upper arm on the patient's right; the cuff's sleeve axis lines up with the arm (head-section local Z).
+                var socketGo = new GameObject("CuffSocket");
+                socketGo.transform.SetParent(upperBody, false);
+                socketGo.transform.localPosition = new Vector3(-0.25f, 0.15f, 0.27f);
+                var trigger = socketGo.AddComponent<SphereCollider>();
+                trigger.isTrigger = true;
+                trigger.radius = 0.11f;
+                socketGo.AddComponent<CuffSocket>().Bind(cuff.gameObject);
+            }
+
+            if (!monitor) return null;
+            var button = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            button.name = "NIBP_Start";
+            button.transform.SetParent(monitor, false);
+            button.transform.localPosition = new Vector3(0.13f, -0.135f, -0.042f);
+            button.transform.localScale = new Vector3(0.1f, 0.03f, 0.014f);
+            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            const string matPath = "Assets/HSE/Materials/Guide/NibpButton.mat";
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (existing) mat = existing; else AssetDatabase.CreateAsset(mat, matPath);
+            mat.SetColor("_BaseColor", new Color(0.15f, 0.55f, 0.95f));
+            mat.EnableKeyword("_EMISSION");
+            mat.SetColor("_EmissionColor", new Color(0.05f, 0.2f, 0.4f));
+            button.GetComponent<MeshRenderer>().sharedMaterial = mat;
+
+            var labelGo = new GameObject("Label");
+            labelGo.transform.SetParent(monitor, false);
+            labelGo.transform.localPosition = new Vector3(0.13f, -0.135f, -0.05f);
+            var label = labelGo.AddComponent<TMPro.TextMeshPro>();
+            label.rectTransform.sizeDelta = new Vector2(0.09f, 0.022f);
+            label.text = "<b>NIBP START</b>";
+            label.alignment = TMPro.TextAlignmentOptions.Center;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 0.01f;
+            label.fontSizeMax = 1f;
+            label.color = Color.white;
+
+            var interactable = button.AddComponent<XRSimpleInteractable>();
+            var pokeFilter = System.Type.GetType("UnityEngine.XR.Interaction.Toolkit.Filtering.XRPokeFilter, Unity.XR.Interaction.Toolkit");
+            if (pokeFilter != null) button.AddComponent(pokeFilter);
+
+            var display = monitor.GetComponent<HSE.Clinical.Vitals.VitalsMonitorDisplay>();
+            if (!display) display = monitor.gameObject.AddComponent<HSE.Clinical.Vitals.VitalsMonitorDisplay>();
+            var nibp = monitor.GetComponent<HSE.Clinical.Vitals.NibpController>();
+            if (!nibp) nibp = monitor.gameObject.AddComponent<HSE.Clinical.Vitals.NibpController>();
+            nibp.Bind(interactable, display);
+            return button;
+        }
+
         static T Child<T>(ScenarioStep parent, string id, string title, string instruction, XRBaseInteractable target) where T : ScenarioStep
         {
             var go = new GameObject(id);
@@ -193,7 +280,7 @@ namespace HSE.EditorTools
             "BP_Cuff", "Tourniquet", "AlcoholSwab_0", "AlcoholSwab_1", "AlcoholSwab_2", "Gauze", "Plasters",
             "Tube_EDTA_Lavender", "Tube_SST_Gold", "Tube_Citrate_LightBlue", "Tube_Heparin_Green",
             "VacutainerHolder", "SharpsContainer", "SpecimenBag", "LabelPrinter", "ProcedureTray",
-            "VitalsMonitor", "CommsTerminal", "CareBoard", "ClinicalWasteBin"
+            "VitalsMonitor", "CommsTerminal", "CareBoard", "ClinicalWasteBin", "NIBP_Start"
         };
 
         static void PrepareHighlights(GameObject pda, GameObject bed)

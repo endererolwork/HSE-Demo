@@ -506,8 +506,15 @@ namespace HSE.EditorTools
         static void BuildBpCuffHolder(Transform t)
         {
             NoCol(Box("Basket", t, new Vector3(0, 1.2f, -0.06f), new Vector3(0.22f, 0.12f, 0.11f), M("PlasticGray")));
-            var cuff = Box("BP_Cuff", t, new Vector3(0, 1.27f, -0.06f), new Vector3(0.17f, 0.1f, 0.07f), M("CuffBlue"));
-            NoCol(Box("CuffStrap", cuff.transform.parent, new Vector3(0, 1.27f, -0.097f), new Vector3(0.12f, 0.06f, 0.004f), M("Sheet")));
+            // Grabbable cuff: a short blue sleeve (axis = local Z) that wraps the upper arm when placed in the arm socket.
+            var cuff = Group("BP_Cuff", t, new Vector3(0, 1.29f, -0.07f)).transform;
+            cuff.localRotation = Quaternion.Euler(0, 90, 0);
+            NoCol(Cyl("Sleeve", cuff, Vector3.zero, 0.115f, 0.14f, M("CuffBlue"), new Vector3(90, 0, 0)));
+            NoCol(Cyl("SleeveInner", cuff, Vector3.zero, 0.1f, 0.142f, M("Black"), new Vector3(90, 0, 0)));
+            NoCol(Box("Velcro", cuff, new Vector3(0, 0.058f, 0), new Vector3(0.05f, 0.004f, 0.12f), M("Sheet")));
+            NoCol(Cyl("TubePort", cuff, new Vector3(0.05f, 0.045f, 0.05f), 0.012f, 0.03f, M("Black")));
+            var cuffCol = cuff.gameObject.AddComponent<BoxCollider>();
+            cuffCol.size = new Vector3(0.12f, 0.12f, 0.14f);
             // Hose from cuff up to the monitor.
             Segment("Hose_A", t, new Vector3(0.05f, 1.3f, -0.08f), new Vector3(0.2f, 1.45f, -0.2f), 0.012f, M("Black"));
             Segment("Hose_B", t, new Vector3(0.2f, 1.45f, -0.2f), new Vector3(0.38f, 1.62f, -0.3f), 0.012f, M("Black"));

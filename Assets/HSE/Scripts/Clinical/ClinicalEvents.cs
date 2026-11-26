@@ -28,5 +28,20 @@ namespace HSE.Clinical
         public static void RaiseLabOrderRejected(string reason) => LabOrderRejected?.Invoke(reason);
         public static void RaiseLabReportReady(Lab.LabReport r) => LabReportReady?.Invoke(r);
         public static void RaiseLabCommentReady(Lab.LabReport r, string comment) => LabCommentReady?.Invoke(r, comment);
+
+        // Blood pressure
+        public static event Action CuffApplied;
+        public static event Action CuffRemoved;
+        public static event Action BloodPressureStartedWithoutCuff;
+        public static event Action<Vitals.VitalSample> BloodPressureMeasured;
+        public static event Action<PatientRecord, Vitals.VitalSample> VitalsRecorded;
+
+        public static bool CuffOnPatient { get; private set; }
+
+        public static void RaiseCuffApplied() { CuffOnPatient = true; CuffApplied?.Invoke(); }
+        public static void RaiseCuffRemoved() { CuffOnPatient = false; CuffRemoved?.Invoke(); }
+        public static void RaiseBloodPressureStartedWithoutCuff() => BloodPressureStartedWithoutCuff?.Invoke();
+        public static void RaiseBloodPressureMeasured(Vitals.VitalSample s) => BloodPressureMeasured?.Invoke(s);
+        public static void RaiseVitalsRecorded(PatientRecord p, Vitals.VitalSample s) => VitalsRecorded?.Invoke(p, s);
     }
 }

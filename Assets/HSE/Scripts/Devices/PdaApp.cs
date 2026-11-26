@@ -57,6 +57,7 @@ namespace HSE.Devices
             _selected.Clear();
             _lastOrder = null;
             _patientTab = PatientTab.Details;
+            _bpMeasured = _vitalsRecorded = false;
             ShowHome(null);
         }
         public bool IdentityConfirmed => _identityConfirmed;
@@ -68,8 +69,17 @@ namespace HSE.Devices
             ShowHome(null);
         }
 
-        void OnEnable() => Loc.Changed += OnLanguageChanged;
-        void OnDisable() => Loc.Changed -= OnLanguageChanged;
+        void OnEnable()
+        {
+            Loc.Changed += OnLanguageChanged;
+            ClinicalEvents.BloodPressureMeasured += OnBpMeasured;
+        }
+
+        void OnDisable()
+        {
+            Loc.Changed -= OnLanguageChanged;
+            ClinicalEvents.BloodPressureMeasured -= OnBpMeasured;
+        }
 
         /// <summary>Rebuilds the UI in the new language and shows the same screen again.</summary>
         void OnLanguageChanged()
@@ -211,7 +221,40 @@ namespace HSE.Devices
             var h = HSE.Clinical.Vitals.VitalsFeed.History;
             Chart(col, "HR", h.Select(x => x.HeartRate).ToList(), 40, 140, 60, 100, Green);
             Chart(col, "SpO2 %", h.Select(x => x.SpO2).ToList(), 85, 100, 94, 100, Blue);
-            Chart(col, "Temp °C", h.Select(x => x.Temperature).ToList(), 35.5f, 40f, 36.1f, 37.8f, Amber);
+
+            // Record the bedside measurement into the patient record.
+            if (_bpMeasured)
+            {
+                bool abnormal = v.Systolic >= 140 || v.Systolic < 100 || v.Diastolic >= 90 || v.Diastolic < 60 || v.HeartRate > 100 || v.HeartRate < 50;
+                if (abnormal) Label(col, Loc.T("pda.vitals.abnormal"), 26, Red, TextAlignmentOptions.Center, true, 70);
+                if (_vitalsRecorded)
+                {
+                    var done = Box(col, BlueLight, 70);
+                    Label(done, Loc.T("pda.vitals.recorded"), 32, Green, TextAlignmentOptions.Center, true);
+                }
+                else
+                    MakeButton(col, Loc.F("pda.vitals.record", $"{v.Systolic:0}/{v.Diastolic:0}", $"{v.HeartRate:0}"), Green, Color.white, 96, () =>
+                    {
+                        _vitalsRecorded = true;
+                        ClinicalEvents.RaiseVitalsRecorded(_patient, v);
+                        ShowPatient();
+                    });
+            }
+            else Label(col, Loc.T("pda.vitals.measureFirst"), 26, Muted, TextAlignmentOptions.Center, false, 60);
+        }
+
+        bool _bpMeasured, _vitalsRecorded;
+
+        void OnBpMeasured(HSE.Clinical.Vitals.VitalSample _)
+        {
+            _bpMeasured = true;
+            _vitalsRecorded = false;
+            if (_patient != null)
+            {
+                // Jump straight to the Vitals page so the reading can be recorded.
+                _patientTab = PatientTab.Vitals;
+                if (_patientScreen.gameObject.activeSelf) ShowPatient();
+            }
         }
 
         void ResultsPage(RectTransform col)

@@ -46,10 +46,21 @@ namespace HSE.Clinical.Vitals
             }
         }
 
+        bool _measuredOnce;
+        System.DateTime _measuredAt;
+
+        void OnMeasured(VitalSample s)
+        {
+            _measuredOnce = true;
+            _measuredAt = s.Time;
+            Refresh();
+        }
+
         void OnEnable()
         {
             ActivePatient.Changed += OnPatient;
             VitalsFeed.Updated += Refresh;
+            ClinicalEvents.BloodPressureMeasured += OnMeasured;
             if (ActivePatient.Current) OnPatient(ActivePatient.Current);
         }
 
@@ -57,12 +68,13 @@ namespace HSE.Clinical.Vitals
         {
             ActivePatient.Changed -= OnPatient;
             VitalsFeed.Updated -= Refresh;
+            ClinicalEvents.BloodPressureMeasured -= OnMeasured;
         }
 
         void OnPatient(PatientRecord p)
         {
+            _measuredOnce = false; // the nurse measures blood pressure in the scenario
             VitalsFeed.Reset(p);
-            VitalsFeed.MeasureBloodPressure();
         }
 
         void Update()
@@ -75,14 +87,32 @@ namespace HSE.Clinical.Vitals
             DrawTraces();
         }
 
+        string _nibpOverride, _nibpOverrideLabel;
+
+        /// <summary>Shows a live cuff pressure / status in the NIBP field while a measurement runs. Null clears it.</summary>
+        public void OverrideNibp(string value, string label)
+        {
+            _nibpOverride = value;
+            _nibpOverrideLabel = label;
+            Refresh();
+        }
+
         void Refresh()
         {
             var v = VitalsFeed.Current;
             if (heartRate) heartRate.text = v.HeartRate.ToString("0");
             if (spo2) spo2.text = v.SpO2.ToString("0");
             if (respRate) respRate.text = v.RespRate.ToString("0");
-            if (bloodPressure) bloodPressure.text = $"{v.Systolic:0}/{v.Diastolic:0}";
-            if (bloodPressureTime) bloodPressureTime.text = "NIBP " + v.Time.ToString("HH:mm");
+            if (_nibpOverride != null)
+            {
+                if (bloodPressure) bloodPressure.text = _nibpOverride;
+                if (bloodPressureTime) bloodPressureTime.text = _nibpOverrideLabel;
+            }
+            else
+            {
+                if (bloodPressure) bloodPressure.text = _measuredOnce ? $"{v.Systolic:0}/{v.Diastolic:0}" : "---/---";
+                if (bloodPressureTime) bloodPressureTime.text = _measuredOnce ? "NIBP " + _measuredAt.ToString("HH:mm") : "NIBP not measured";
+            }
             if (_temp) _temp.text = $"TEMP {v.Temperature:0.0} °C";
         }
 
