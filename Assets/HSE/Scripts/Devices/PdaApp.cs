@@ -148,6 +148,8 @@ namespace HSE.Devices
             Tab(tabs, Loc.T("pda.tab.vitals"), _patientTab == PatientTab.Vitals, () => { _patientTab = PatientTab.Vitals; ShowPatient(); });
             Tab(tabs, Loc.T("pda.tab.results"), _patientTab == PatientTab.Results, () => { _patientTab = PatientTab.Results; ShowPatient(); });
             foreach (var t in tabs.GetComponentsInChildren<TextMeshProUGUI>()) t.fontSize = 26;
+            // Next specimen task (print labels / document) sits right under the tabs on every tab, so it is never off-screen.
+            SpecimenActions(col);
 
             var card = Box(col, Card, 0);
             var cardCol = Column(card, 20, 4);
@@ -188,7 +190,6 @@ namespace HSE.Devices
                     Dot(r, t.ContainerColor, 30);
                     Label(r, t.Name, 34, Ink, TextAlignmentOptions.Left, false).GetComponent<LayoutElement>().flexibleWidth = 1;
                 }
-                SpecimenActions(col);
             }
 
             Spacer(col);

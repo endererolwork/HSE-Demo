@@ -172,7 +172,7 @@ namespace HSE.EditorTools
                 "Scan the wristband again, print the labels on the PDA and stick each one on its tube.", StepRequirement.Mandatory, 15, HighlightStyle.Objective);
             var rescan = ChildStep<ScanWristbandStep>(label, "rescan_wristband", "Verify identity again", "Scan the patient's wristband before labelling.",
                 wristband ? wristband.gameObject : null);
-            var print = ChildStep<ProcedureStep>(label, "print_labels", "Print labels", "On the PDA Orders tab press Print labels.", pda ? pda.gameObject : null);
+            var print = ChildStep<ProcedureStep>(label, "print_labels", "Print labels", "On the PDA patient screen press the blue Print labels button right under the tabs.", pda ? pda.gameObject : null);
             print.SetEvent("labels_printed");
             var stick = ChildStep<ProcedureStep>(label, "apply_labels", "Apply the labels", "Take each label from the printer and hold it against its tube.", spec.Printer);
             stick.SetEvent("labels_complete");

@@ -197,7 +197,7 @@ namespace HSE.Localization
             ["step.rescan_wristband.instr"] = ("Scan the patient's wristband before labelling.", "Etiketlemeden önce hasta bilekliğini okut."),
             ["step.rescan_wristband.cue"] = ("Scan the wristband again", "Bilekliği tekrar okut"),
             ["step.print_labels.title"] = ("Print labels", "Etiket yazdır"),
-            ["step.print_labels.instr"] = ("On the PDA Orders tab press Print labels.", "PDA'nın İstemler sekmesinde Etiket yazdır'a bas."),
+            ["step.print_labels.instr"] = ("On the PDA patient screen press the blue Print labels button right under the tabs.", "PDA hasta ekranında sekmelerin hemen altındaki mavi Etiket yazdır düğmesine bas."),
             ["step.print_labels.cue"] = ("Print labels on the PDA", "PDA'dan etiket yazdır"),
             ["step.apply_labels.title"] = ("Apply the labels", "Etiketleri yapıştır"),
             ["step.apply_labels.instr"] = ("Take each label from the printer and hold it against its tube.", "Her etiketi yazıcıdan al ve kendi tüpüne tut."),
