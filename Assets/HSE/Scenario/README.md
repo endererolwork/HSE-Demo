@@ -84,7 +84,8 @@ Other patterns: Observer (runner events, `ScenarioSignal`), Composite (`Composit
 | 3 | Scan the wristband | `ScanWristbandStep`; a wrong code or wrong patient is a mistake | wristband + QR |
 | 4 | Confirm identity on the PDA | `ConfirmIdentityStep` | PDA |
 | 5 | Hand hygiene, then gloves | `CompositeStep` (in sequence) of two `InteractStep`s | dispenser, then glove box |
-| 6 | Send the lab request | `SubmitLabOrderStep`; an order that doesn't match the physician's is a mistake | PDA |
+| 6 | Blood pressure: cuff on the arm, NIBP START on the monitor, record on the PDA | `CompositeStep` (in sequence) of `ApplyCuffStep`, `MeasureBloodPressureStep` (start without the cuff is a mistake), `RecordVitalsStep` | cuff, then monitor button, then PDA |
+| 7 | Send the lab request | `SubmitLabOrderStep`; an order that doesn't match the physician's is a mistake | PDA |
 | + | Check the care board | optional `InteractStep` (hover) | none |
 | + | Check the monitor | optional `InteractStep` (hover) | none |
 

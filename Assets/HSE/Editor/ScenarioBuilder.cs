@@ -105,6 +105,41 @@ namespace HSE.EditorTools
             glove.SetTarget(gloves);
             hygiene.SetChildren(new ScenarioStep[] { rub, glove }, CompositeStep.Order.InSequence);
 
+            // ---------------- GDD step 2: blood pressure (cuff on the arm -> NIBP on the monitor -> record on the PDA)
+            var cuff = Find("BP_Cuff");
+            var nibpButton = SetupBloodPressure(cuff, Find("VitalsMonitor"), Find("UpperBody"));
+            var bp = Step<CompositeStep>("blood_pressure", "Measure blood pressure",
+                "Put the cuff on the patient's right upper arm, start NIBP on the monitor, then record the values on the PDA.", StepRequirement.Mandatory, 15, HighlightStyle.Objective);
+            var applyCuff = ChildStep<ApplyCuffStep>(bp, "apply_cuff", "Apply the cuff", "Take the cuff from the wall and place it on the patient's right upper arm.", cuff ? cuff.gameObject : null);
+            var measure = ChildStep<MeasureBloodPressureStep>(bp, "measure_bp", "Start NIBP", "Press NIBP START on the vital signs monitor.", nibpButton);
+            var record = ChildStep<RecordVitalsStep>(bp, "record_vitals", "Record vitals", "On the PDA Vitals page, check the values and press Record.", pda ? pda.gameObject : null);
+            bp.SetChildren(new ScenarioStep[] { applyCuff, measure, record }, CompositeStep.Order.InSequence);
+
+            // ---------------- GDD steps 3-4: venous blood collection
+            var draw = SetupBloodDraw(Find("UpperBody"), Find("RightArm"));
+            root.AddComponent<BloodDrawSession>();
+            var blood = Step<CompositeStep>("blood_draw", "Take the blood sample",
+                "Tourniquet, clean the site, insert the needle, fill the tubes for the ordered tests, release the tourniquet, withdraw, dispose of the needle, cover the site.",
+                StepRequirement.Mandatory, 25, HighlightStyle.Objective);
+            ProcedureStep P(string id, string title, string instr, string evt, Transform target)
+            {
+                var s = ChildStep<ProcedureStep>(blood, id, title, instr, target ? target.gameObject : null);
+                s.SetEvent(evt);
+                return s;
+            }
+            var drawSteps = new ScenarioStep[]
+            {
+                P("apply_tourniquet", "Apply the tourniquet", "Put the tourniquet on the upper arm, above the elbow.", "tourniquet_on", draw.Tourniquet),
+                P("clean_site", "Clean the site", "Wipe the inside of the elbow with an alcohol swab and let it dry.", "site_cleaned", draw.Swab),
+                P("insert_needle", "Insert the needle", "Bring the needle to the inside of the elbow at a shallow angle (15-30 degrees).", "needle_in", draw.Holder),
+                P("fill_tubes", "Fill the tubes", "Push each tube needed for the ordered tests onto the holder until it fills.", "tubes_complete", draw.Rack),
+                P("release_tourniquet", "Release the tourniquet", "Remove the tourniquet before taking the needle out.", "tourniquet_off", draw.Tourniquet),
+                P("withdraw_needle", "Withdraw the needle", "Take the needle out of the arm.", "needle_out", draw.Holder),
+                P("dispose_needle", "Dispose of the needle", "Put the needle straight into the sharps container.", "needle_disposed", draw.Sharps),
+                P("cover_site", "Cover the site", "Press gauze on the puncture site.", "site_covered", draw.Gauze),
+            };
+            blood.SetChildren(drawSteps, CompositeStep.Order.InSequence);
+
             var order = Step<SubmitLabOrderStep>("lab_order", "Send the lab request",
                 "Open \"Lab Request\" on the PDA, select the tests the physician ordered and send.", StepRequirement.Mandatory, 20, HighlightStyle.Objective,
                 pda ? pda.gameObject : null);
@@ -119,7 +154,7 @@ namespace HSE.EditorTools
             checkMonitor.SetTarget(monitor, onSelect: true, onActivate: true, onHover: true);
 
             runner.Configure("Blood Collection and Lab Request",
-                new ScenarioStep[] { grab, approach, scan, confirm, hygiene, order, readBoard, checkMonitor },
+                new ScenarioStep[] { hygiene, grab, approach, scan, confirm, bp, blood, order, readBoard, checkMonitor }, // hand hygiene first, before going to the patient
                 highlighter, autoPlay: false); // starts when a language is picked at the entrance
 
             var guide = new GameObject("Guide").AddComponent<ScenarioGuide>();
@@ -177,6 +212,198 @@ namespace HSE.EditorTools
             Debug.Log("[HSE] Scenario set up with " + runner.Steps.Count + " steps.");
         }
 
+        struct DrawKit { public Transform Tourniquet, Swab, Holder, Rack, Sharps, Gauze; }
+
+        static XRGrabInteractable MakeGrab(Transform t)
+        {
+            if (!t) return null;
+            var rb = t.GetComponent<Rigidbody>();
+            if (!rb) rb = t.gameObject.AddComponent<Rigidbody>();
+            rb.isKinematic = true;
+            rb.useGravity = false;
+            var grab = t.GetComponent<XRGrabInteractable>();
+            if (!grab) grab = t.gameObject.AddComponent<XRGrabInteractable>();
+            grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
+            grab.throwOnDetach = false;
+            grab.useDynamicAttach = true;
+            if (!t.GetComponent<ReturnHome>()) t.gameObject.AddComponent<ReturnHome>();
+            return grab;
+        }
+
+        static Transform Child(Transform parent, string name, Vector3 localPos, Quaternion localRot)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = localPos;
+            go.transform.localRotation = localRot;
+            return go.transform;
+        }
+
+        /// <summary>Makes the trolley supplies usable for venipuncture and wires the safety-checked interactions.</summary>
+        static DrawKit SetupBloodDraw(Transform upperBody, Transform rightArm)
+        {
+            var kit = new DrawKit
+            {
+                Tourniquet = Find("Tourniquet"), Swab = Find("AlcoholSwab_0"), Holder = Find("VacutainerHolder"),
+                Rack = Find("TubeRack"), Sharps = Find("SharpsContainer"), Gauze = Find("Gauze"),
+            };
+            var tourniquet = MakeGrab(kit.Tourniquet);
+            var swab = MakeGrab(kit.Swab);
+            var holder = MakeGrab(kit.Holder);
+            var gauze = MakeGrab(kit.Gauze);
+
+            // Inside of the right elbow; up = skin normal.
+            var site = rightArm ? Child(rightArm, "PunctureSite", new Vector3(-0.255f, 0.7f, 0.27f), Quaternion.identity) : null;
+
+            if (upperBody && tourniquet)
+            {
+                var sock = new GameObject("TourniquetSocket");
+                sock.transform.SetParent(upperBody, false);
+                sock.transform.localPosition = new Vector3(-0.25f, 0.15f, 0.13f);
+                sock.transform.localRotation = Quaternion.Euler(0, 90, 0);
+                var c = sock.AddComponent<SphereCollider>();
+                c.isTrigger = true;
+                c.radius = 0.09f;
+                sock.AddComponent<ProcedureSocket>().Configure(tourniquet.gameObject, "tourniquet_on", "tourniquet_off");
+            }
+
+            if (site && swab) site.gameObject.AddComponent<ProximityTrigger>().Configure(swab, null, site, 0.06f, 1.2f, "site_cleaned");
+            if (site && gauze) site.gameObject.AddComponent<ProximityTrigger>().Configure(gauze, null, site, 0.06f, 1f, "site_covered");
+
+            if (holder)
+            {
+                // The holder lies on its side on the trolley; its needle points along local -Y.
+                var tip = Child(holder.transform, "NeedleTip", new Vector3(0, -0.075f, 0), Quaternion.identity);
+                var dir = Child(holder.transform, "NeedleDir", new Vector3(0, -0.05f, 0), Quaternion.LookRotation(Vector3.down, Vector3.forward));
+                var port = Child(holder.transform, "HolderPort", new Vector3(0, 0.05f, 0), Quaternion.identity);
+                NeedleInsertion needle = null;
+                if (site)
+                {
+                    needle = site.gameObject.AddComponent<NeedleInsertion>();
+                    needle.Configure(holder, tip, dir, site);
+                }
+
+                var bloodMat = BloodMaterial();
+                var tubes = new System.Collections.Generic.List<XRGrabInteractable>();
+                foreach (var n in new[] { "Tube_EDTA_Lavender", "Tube_SST_Gold", "Tube_Citrate_LightBlue", "Tube_Heparin_Green", "Tube_Fluoride_Gray" })
+                {
+                    var t = Find(n);
+                    var g = MakeGrab(t);
+                    if (!g) continue;
+                    var b = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                    b.name = "Blood";
+                    Object.DestroyImmediate(b.GetComponent<Collider>());
+                    b.transform.SetParent(t, false);
+                    b.transform.localScale = new Vector3(0.013f, 0.0001f, 0.013f);
+                    b.transform.localPosition = new Vector3(0, -0.05f, 0);
+                    b.GetComponent<MeshRenderer>().sharedMaterial = bloodMat;
+                    b.SetActive(false);
+                    tubes.Add(g);
+                }
+                if (needle) holder.gameObject.AddComponent<TubeFilling>().Configure(needle, port, tubes);
+
+                if (kit.Sharps)
+                {
+                    var mouth = Child(kit.Sharps, "Opening", new Vector3(0, 0.2f, 0), Quaternion.identity);
+                    kit.Sharps.gameObject.AddComponent<ProximityTrigger>().Configure(holder, tip, mouth, 0.09f, 0.3f, "needle_disposed", consume: true);
+                }
+            }
+            return kit;
+        }
+
+        static Material BloodMaterial()
+        {
+            const string path = "Assets/HSE/Materials/Guide/Blood.mat";
+            var m = AssetDatabase.LoadAssetAtPath<Material>(path);
+            if (!m)
+            {
+                GuideMaterial("GuideArrow", new Color(1f, 0.78f, 0.1f, 1f), false);
+                m = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+                AssetDatabase.CreateAsset(m, path);
+            }
+            m.SetColor("_BaseColor", new Color(0.45f, 0.02f, 0.03f));
+            m.SetFloat("_Smoothness", 0.7f);
+            EditorUtility.SetDirty(m);
+            return m;
+        }
+
+        static T ChildStep<T>(ScenarioStep parent, string id, string title, string instruction, GameObject target) where T : ScenarioStep
+        {
+            var go = new GameObject(id);
+            go.transform.SetParent(parent.transform, false);
+            var s = go.AddComponent<T>();
+            s.Configure(id, title, instruction, StepRequirement.Mandatory, 0, target ? new[] { target } : null, HighlightStyle.Objective);
+            return s;
+        }
+
+        /// <summary>Makes the cuff grabbable, adds the arm socket and the NIBP START button. Returns the button.</summary>
+        static GameObject SetupBloodPressure(Transform cuff, Transform monitor, Transform upperBody)
+        {
+            if (cuff)
+            {
+                var rb = cuff.GetComponent<Rigidbody>();
+                if (!rb) rb = cuff.gameObject.AddComponent<Rigidbody>();
+                rb.isKinematic = true;
+                rb.useGravity = false;
+                var grab = cuff.GetComponent<XRGrabInteractable>();
+                if (!grab) grab = cuff.gameObject.AddComponent<XRGrabInteractable>();
+                grab.movementType = XRBaseInteractable.MovementType.Instantaneous;
+                grab.throwOnDetach = false;
+                grab.useDynamicAttach = true;
+                if (!cuff.GetComponent<ReturnHome>()) cuff.gameObject.AddComponent<ReturnHome>();
+            }
+
+            if (upperBody && cuff)
+            {
+                // Mid upper arm on the patient's right; the cuff's sleeve axis lines up with the arm (head-section local Z).
+                var socketGo = new GameObject("CuffSocket");
+                socketGo.transform.SetParent(upperBody, false);
+                socketGo.transform.localPosition = new Vector3(-0.25f, 0.15f, 0.27f);
+                var trigger = socketGo.AddComponent<SphereCollider>();
+                trigger.isTrigger = true;
+                trigger.radius = 0.11f;
+                socketGo.AddComponent<CuffSocket>().Bind(cuff.gameObject);
+            }
+
+            if (!monitor) return null;
+            var button = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            button.name = "NIBP_Start";
+            button.transform.SetParent(monitor, false);
+            button.transform.localPosition = new Vector3(0.13f, -0.135f, -0.042f);
+            button.transform.localScale = new Vector3(0.1f, 0.03f, 0.014f);
+            var mat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
+            const string matPath = "Assets/HSE/Materials/Guide/NibpButton.mat";
+            var existing = AssetDatabase.LoadAssetAtPath<Material>(matPath);
+            if (existing) mat = existing; else AssetDatabase.CreateAsset(mat, matPath);
+            mat.SetColor("_BaseColor", new Color(0.15f, 0.55f, 0.95f));
+            mat.EnableKeyword("_EMISSION");
+            mat.SetColor("_EmissionColor", new Color(0.05f, 0.2f, 0.4f));
+            button.GetComponent<MeshRenderer>().sharedMaterial = mat;
+
+            var labelGo = new GameObject("Label");
+            labelGo.transform.SetParent(monitor, false);
+            labelGo.transform.localPosition = new Vector3(0.13f, -0.135f, -0.05f);
+            var label = labelGo.AddComponent<TMPro.TextMeshPro>();
+            label.rectTransform.sizeDelta = new Vector2(0.09f, 0.022f);
+            label.text = "<b>NIBP START</b>";
+            label.alignment = TMPro.TextAlignmentOptions.Center;
+            label.enableAutoSizing = true;
+            label.fontSizeMin = 0.01f;
+            label.fontSizeMax = 1f;
+            label.color = Color.white;
+
+            var interactable = button.AddComponent<XRSimpleInteractable>();
+            var pokeFilter = System.Type.GetType("UnityEngine.XR.Interaction.Toolkit.Filtering.XRPokeFilter, Unity.XR.Interaction.Toolkit");
+            if (pokeFilter != null) button.AddComponent(pokeFilter);
+
+            var display = monitor.GetComponent<HSE.Clinical.Vitals.VitalsMonitorDisplay>();
+            if (!display) display = monitor.gameObject.AddComponent<HSE.Clinical.Vitals.VitalsMonitorDisplay>();
+            var nibp = monitor.GetComponent<HSE.Clinical.Vitals.NibpController>();
+            if (!nibp) nibp = monitor.gameObject.AddComponent<HSE.Clinical.Vitals.NibpController>();
+            nibp.Bind(interactable, display);
+            return button;
+        }
+
         static T Child<T>(ScenarioStep parent, string id, string title, string instruction, XRBaseInteractable target) where T : ScenarioStep
         {
             var go = new GameObject(id);
@@ -193,7 +420,7 @@ namespace HSE.EditorTools
             "BP_Cuff", "Tourniquet", "AlcoholSwab_0", "AlcoholSwab_1", "AlcoholSwab_2", "Gauze", "Plasters",
             "Tube_EDTA_Lavender", "Tube_SST_Gold", "Tube_Citrate_LightBlue", "Tube_Heparin_Green",
             "VacutainerHolder", "SharpsContainer", "SpecimenBag", "LabelPrinter", "ProcedureTray",
-            "VitalsMonitor", "CommsTerminal", "CareBoard", "ClinicalWasteBin"
+            "VitalsMonitor", "CommsTerminal", "CareBoard", "ClinicalWasteBin", "NIBP_Start", "Tube_Fluoride_Gray", "TubeRack"
         };
 
         static void PrepareHighlights(GameObject pda, GameObject bed)
