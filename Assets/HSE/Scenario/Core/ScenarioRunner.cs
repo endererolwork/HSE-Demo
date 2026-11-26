@@ -105,6 +105,17 @@ namespace HSE.Scenario
         }
 
         /// <summary>
+        /// Instructor / tester shortcut: skips only the sub-task in progress (e.g. "Dispose of the needle") when the
+        /// current step has sub-tasks, otherwise the whole current step.
+        /// </summary>
+        public void SkipCurrentSubStep()
+        {
+            if (!IsRunning || CurrentStep == null) return;
+            if (CurrentStep is CompositeStep c && c.SkipActiveChild()) return;
+            SkipCurrentStep();
+        }
+
+        /// <summary>
         /// Ends the run now for a valid reason (e.g. the patient refused consent and it was handled correctly).
         /// Open and remaining steps are marked not applicable, so they don't count against the score.
         /// </summary>

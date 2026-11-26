@@ -29,7 +29,7 @@ namespace HSE.Training.Steps
             : null;
 
         public string InstructionText => State == StepState.Active && _plan.Count > 0
-            ? Loc.F("tubes.instr", _plan.Count, string.Join(" → ", _plan.Select(t => Loc.T("tube." + t))))
+            ? Loc.F("tubes.instr", _plan.Count, string.Join(" > ", _plan.Select(t => Loc.T("tube." + t))))
             : null;
 
         protected override void OnBegin()

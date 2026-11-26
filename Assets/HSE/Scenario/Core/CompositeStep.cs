@@ -57,6 +57,24 @@ namespace HSE.Scenario
             foreach (var c in children) c.ResetStep();
         }
 
+        /// <summary>
+        /// Skips the deepest sub-task that is active now (instructor shortcut). Reported as a mistake of this step.
+        /// Returns false when no sub-task is active.
+        /// </summary>
+        public bool SkipActiveChild()
+        {
+            foreach (var c in children)
+            {
+                if (!c || c.State != StepState.Active) continue;
+                if (c is CompositeStep inner && inner.SkipActiveChild()) return true;
+                c.Abort();
+                ForwardMistake(c, "Skipped: " + c.Title);
+                BeginNextOrFinish();
+                return true;
+            }
+            return false;
+        }
+
         void OnChildCompleted(ScenarioStep child) => BeginNextOrFinish();
 
         void OnChildMistake(ScenarioStep child, string message) => ForwardMistake(child, message);
@@ -65,7 +83,7 @@ namespace HSE.Scenario
         {
             foreach (var c in children)
             {
-                if (c.State == StepState.Completed) continue;
+                if (c.State == StepState.Completed || c.State == StepState.Skipped) continue;
                 if (order == Order.InSequence && c.State == StepState.Locked) c.Begin(Context);
                 return; // something is still open
             }

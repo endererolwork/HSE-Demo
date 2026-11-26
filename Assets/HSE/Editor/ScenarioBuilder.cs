@@ -466,7 +466,8 @@ namespace HSE.EditorTools
                 if (kit.Sharps)
                 {
                     var mouth = Child(kit.Sharps, "Opening", new Vector3(0, 0.2f, 0), Quaternion.identity);
-                    kit.Sharps.gameObject.AddComponent<ProximityTrigger>().Configure(holder, tip, mouth, 0.09f, 0.3f, "needle_disposed", consume: true);
+                    // Generous: held over or dropped onto the box both count.
+                    kit.Sharps.gameObject.AddComponent<ProximityTrigger>().Configure(holder, tip, mouth, 0.14f, 0.15f, "needle_disposed", consume: true, mustBeHeld: false);
                 }
             }
             return kit;

@@ -38,7 +38,8 @@ namespace HSE.Training.UI
 
         /// <summary>Raised when the trainee presses "Next patient" on the results screen.</summary>
         public event System.Action NextRequested;
-        RectTransform _nextButton;
+        RectTransform _nextButton, _skipButton;
+        TextMeshProUGUI _skipText;
 
         /// <summary>Opens the full list. With autoHide it folds back into the tab after a while.</summary>
         public void Expand(bool autoHide = true)
@@ -139,6 +140,14 @@ namespace HSE.Training.UI
             Expand(autoHide: true);
         }
         void OnChanged(ScenarioStep _) => Redraw();
+        void SkipStep()
+        {
+            if (!runner || !runner.IsRunning) return;
+            runner.SkipCurrentSubStep();
+            Redraw();
+            Expand(autoHide: true);
+        }
+
 
         void OnMistake(ScenarioStep step, string message)
         {
@@ -154,6 +163,7 @@ namespace HSE.Training.UI
             Expand(autoHide: false);
             _tabText.text = Loc.T("checklist.done");
             _nextButton.gameObject.SetActive(true);
+            _skipButton.gameObject.SetActive(false);
             _nextButton.GetComponentInChildren<TextMeshProUGUI>().text = Loc.T("session.next");
             _header.text = $"<b>{ScenarioTitle}</b>  ·  {Loc.T("checklist.done")}";
             _instruction.text = Loc.T("checklist.results");
@@ -199,6 +209,8 @@ namespace HSE.Training.UI
             int done = mandatory.Count(s => s.State == StepState.Completed || s.State == StepState.Skipped);
             _header.text = $"<b>{ScenarioTitle}</b>  ·  {done}/{mandatory.Count}";
             _tabText.text = Loc.F("checklist.tab", done, mandatory.Count);
+            _skipText.text = Loc.T("checklist.skip");
+            _skipButton.gameObject.SetActive(runner.IsRunning);
 
             _instruction.text = InstructionText();
 
@@ -271,7 +283,7 @@ namespace HSE.Training.UI
             var head = Panel(rt, new Color(0.12f, 0.37f, 0.75f, 0.95f));
             Top(head, 0, 70);
             _header = Text(head, 30, Color.white, TextAlignmentOptions.MidlineLeft);
-            Stretch(_header.rectTransform, 22, 0, 90, 0);
+            Stretch(_header.rectTransform, 22, 0, 250, 0);
 
             var close = Panel(head, new Color(1, 1, 1, 0.15f));
             close.anchorMin = close.anchorMax = new Vector2(1f, 0.5f);
@@ -283,6 +295,18 @@ namespace HSE.Training.UI
             var x = Text(close, 40, Color.white, TextAlignmentOptions.Center);
             x.text = "×";
             Stretch(x.rectTransform, 0, 0, 0, 0);
+
+            // Instructor/tester shortcut: skips the sub-task that is active now (counted as a mistake in the report).
+            _skipButton = Panel(head, new Color(0.95f, 0.65f, 0.15f, 0.9f));
+            _skipButton.anchorMin = _skipButton.anchorMax = new Vector2(1f, 0.5f);
+            _skipButton.pivot = new Vector2(1f, 0.5f);
+            _skipButton.sizeDelta = new Vector2(150, 58);
+            _skipButton.anchoredPosition = new Vector2(-86, 0);
+            _skipButton.GetComponent<Image>().raycastTarget = true;
+            _skipButton.gameObject.AddComponent<Button>().onClick.AddListener(SkipStep);
+            _skipText = Text(_skipButton, 28, Color.white, TextAlignmentOptions.Center);
+            _skipText.fontStyle = FontStyles.Bold;
+            Stretch(_skipText.rectTransform, 0, 0, 0, 0);
 
             var instr = Panel(rt, new Color(1, 1, 1, 0.08f));
             Top(instr, 82, 150);

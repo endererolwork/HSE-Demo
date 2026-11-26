@@ -20,6 +20,7 @@ namespace HSE.Localization
             ["checklist.skipped"] = ("skipped", "atlandı"),
             ["checklist.mistake"] = ("Mistake:", "Hata:"),
             ["checklist.done"] = ("Completed", "Tamamlandı"),
+            ["checklist.skip"] = ("Skip >>", "Geç >>"),
             ["checklist.results"] = ("Scenario finished. Results:", "Senaryo bitti. Sonuçlar:"),
             ["checklist.score"] = ("Score", "Puan"),
             ["checklist.mistakes"] = ("Mistakes", "Hata sayısı"),
