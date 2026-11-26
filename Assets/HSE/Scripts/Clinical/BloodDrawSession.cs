@@ -26,6 +26,12 @@ namespace HSE.Clinical
         public bool TourniquetOn { get; private set; }
         public bool SiteCleaned { get; private set; }
         public bool NeedleIn { get; private set; }
+        public System.DateTime CollectedAt { get; private set; }
+        public IReadOnlyCollection<string> LabeledTubes => _labeled;
+        public IReadOnlyCollection<string> BaggedTubes => _bagged;
+
+        readonly HashSet<string> _labeled = new HashSet<string>();
+        readonly HashSet<string> _bagged = new HashSet<string>();
         public IReadOnlyCollection<string> RequiredTubes => _required;
         public IReadOnlyCollection<string> FilledTubes => _filled;
 
@@ -40,6 +46,8 @@ namespace HSE.Clinical
             "needle_in" => NeedleIn,
             "needle_out" => !NeedleIn && _happened.Contains("needle_in"),
             "tubes_complete" => _required.Count > 0 && _required.All(_filled.Contains),
+            "labels_complete" => _required.Count > 0 && _required.All(_labeled.Contains),
+            "tubes_bagged" => _required.Count > 0 && _required.All(_bagged.Contains),
             _ => _happened.Contains(eventId),
         };
         readonly HashSet<string> _filled = new HashSet<string>();
@@ -47,6 +55,7 @@ namespace HSE.Clinical
         void OnEnable()
         {
             ClinicalEvents.ProcedureEvent += OnEvent;
+            ClinicalEvents.CodeScanned += OnScanned;
             ActivePatient.Changed += OnPatient;
             if (ActivePatient.Current) OnPatient(ActivePatient.Current);
         }
@@ -54,6 +63,7 @@ namespace HSE.Clinical
         void OnDisable()
         {
             ClinicalEvents.ProcedureEvent -= OnEvent;
+            ClinicalEvents.CodeScanned -= OnScanned;
             ActivePatient.Changed -= OnPatient;
         }
 
@@ -62,6 +72,8 @@ namespace HSE.Clinical
             TourniquetOn = SiteCleaned = NeedleIn = false;
             _happened.Clear();
             _filled.Clear();
+            _labeled.Clear();
+            _bagged.Clear();
             _required.Clear();
             if (!p) return;
             foreach (var id in p.physicianOrderedTestIds)
@@ -78,6 +90,7 @@ namespace HSE.Clinical
                 case "site_cleaned": SiteCleaned = true; break;
                 case "needle_in":
                     NeedleIn = true;
+                    CollectedAt = System.DateTime.Now;
                     if (!TourniquetOn) ClinicalEvents.RaiseProcedureMistake("mistake.noTourniquet");
                     if (!SiteCleaned) ClinicalEvents.RaiseProcedureMistake("mistake.siteNotCleaned");
                     break;
@@ -87,8 +100,24 @@ namespace HSE.Clinical
                     break;
                 default:
                     if (id.StartsWith("tube_filled:")) OnTubeFilled(id.Substring("tube_filled:".Length));
+                    else if (id.StartsWith("label_applied:")) Track(_labeled, id.Substring("label_applied:".Length), "labels_complete");
+                    else if (id.StartsWith("tube_bagged:")) Track(_bagged, id.Substring("tube_bagged:".Length), "tubes_bagged");
                     break;
             }
+        }
+
+        void Track(HashSet<string> set, string tube, string completeEvent)
+        {
+            set.Add(tube);
+            if (_required.Count > 0 && _required.All(set.Contains)) ClinicalEvents.RaiseProcedure(completeEvent);
+        }
+
+        /// <summary>A wristband scan after the needle is out is the identity check before labelling.</summary>
+        void OnScanned(ScannableCode code)
+        {
+            if (code.kind == CodeKind.PatientWristband && code.patient == ActivePatient.Current && _happened.Contains("needle_out")
+                && !_happened.Contains("wristband_rescanned"))
+                ClinicalEvents.RaiseProcedure("wristband_rescanned");
         }
 
         void OnTubeFilled(string tube)

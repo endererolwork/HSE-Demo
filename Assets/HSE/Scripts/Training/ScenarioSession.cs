@@ -63,6 +63,7 @@ namespace HSE.Training
             foreach (var t in FindObjectsByType<ProximityTrigger>(FindObjectsSortMode.None)) t.ResetTrigger();
             foreach (var n in FindObjectsByType<NeedleInsertion>(FindObjectsSortMode.None)) n.ResetNeedle();
             foreach (var f in FindObjectsByType<TubeFilling>(FindObjectsInactive.Include, FindObjectsSortMode.None)) f.ResetTubes();
+            foreach (var pr in FindObjectsByType<LabelPrinterDevice>(FindObjectsSortMode.None)) pr.ClearAll(); // labels and request slip
         }
 
         void ResetPda()

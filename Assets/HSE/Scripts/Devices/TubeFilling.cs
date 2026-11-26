@@ -17,6 +17,9 @@ namespace HSE.Devices
         [SerializeField] float portRadius = 0.06f;
         [SerializeField] float fillSeconds = 2.5f;
 
+        public IReadOnlyList<XRGrabInteractable> Tubes => tubes;
+        public bool IsFull(XRGrabInteractable t) => _fill.TryGetValue(t, out var l) && l >= 1f;
+
         readonly Dictionary<XRGrabInteractable, float> _fill = new Dictionary<XRGrabInteractable, float>();
 
         public void Configure(NeedleInsertion insertion, Transform port, IEnumerable<XRGrabInteractable> sampleTubes)

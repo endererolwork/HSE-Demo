@@ -4,7 +4,7 @@ using UnityEngine;
 namespace HSE.Clinical.Lab
 {
     /// <summary>
-    /// The simulated laboratory: a submitted request comes back as a report after a short "processing" delay,
+    /// The simulated laboratory: once the specimen for a submitted request is dispatched, a report comes back after a short "processing" delay,
     /// followed by the comment written in advance for that patient.
     /// </summary>
     public class LabService : MonoBehaviour
@@ -19,12 +19,14 @@ namespace HSE.Clinical.Lab
         void OnEnable()
         {
             ClinicalEvents.LabOrderSubmitted += OnOrder;
+            ClinicalEvents.ProcedureEvent += OnProcedure;
             ActivePatient.Changed += OnPatientChanged;
         }
 
         void OnDisable()
         {
             ClinicalEvents.LabOrderSubmitted -= OnOrder;
+            ClinicalEvents.ProcedureEvent -= OnProcedure;
             ActivePatient.Changed -= OnPatientChanged;
         }
 
@@ -33,9 +35,18 @@ namespace HSE.Clinical.Lab
             StopAllCoroutines();
             Latest = null;
             LatestComment = null;
+            _pending = null;
         }
 
-        void OnOrder(LabOrder order) => StartCoroutine(Process(order));
+        LabOrder _pending;
+
+        // The request is registered on submit; the lab starts once the sealed specimen arrives by pneumatic tube.
+        void OnOrder(LabOrder order) => _pending = order;
+
+        void OnProcedure(string id)
+        {
+            if (id == "specimen_dispatched" && _pending != null) StartCoroutine(Process(_pending));
+        }
 
         IEnumerator Process(LabOrder order)
         {

@@ -140,6 +140,43 @@ namespace HSE.EditorTools
             };
             blood.SetChildren(drawSteps, CompositeStep.Order.InSequence);
 
+            // ---------------- GDD 5: verify identity again, print and apply labels
+            var spec = SetupSpecimenHandling(root.transform);
+            var label = Step<CompositeStep>("labelling", "Label the specimens",
+                "Scan the wristband again, print the labels on the PDA and stick each one on its tube.", StepRequirement.Mandatory, 15, HighlightStyle.Objective);
+            var rescan = ChildStep<ScanWristbandStep>(label, "rescan_wristband", "Verify identity again", "Scan the patient's wristband before labelling.",
+                wristband ? wristband.gameObject : null);
+            var print = ChildStep<ProcedureStep>(label, "print_labels", "Print labels", "On the PDA Orders tab press Print labels.", pda ? pda.gameObject : null);
+            print.SetEvent("labels_printed");
+            var stick = ChildStep<ProcedureStep>(label, "apply_labels", "Apply the labels", "Take each label from the printer and hold it against its tube.", spec.Printer);
+            stick.SetEvent("labels_complete");
+            label.SetChildren(new ScenarioStep[] { rescan, print, stick }, CompositeStep.Order.InSequence);
+
+            // ---------------- GDD 6: document the collection
+            var document = Step<ProcedureStep>("document_collection", "Document the collection",
+                "On the PDA open Document collection, choose the site and the patient's tolerance, then save.", StepRequirement.Mandatory, 10, HighlightStyle.Objective,
+                pda ? pda.gameObject : null);
+            document.SetEvent("collection_documented");
+
+            // ---------------- GDD 8: bag, seal, scan and send by pneumatic tube
+            var dispatch = Step<CompositeStep>("dispatch", "Send the specimen",
+                "Put the labelled tubes in the bag, the request slip in the outer pocket, seal it, scan it with the PDA and send it by pneumatic tube.",
+                StepRequirement.Mandatory, 15, HighlightStyle.Objective);
+            ProcedureStep D(string id, string title, string instr, string evt, GameObject target)
+            {
+                var st = ChildStep<ProcedureStep>(dispatch, id, title, instr, target);
+                st.SetEvent(evt);
+                return st;
+            }
+            dispatch.SetChildren(new ScenarioStep[]
+            {
+                D("bag_tubes", "Bag the tubes", "Put each labelled tube into the specimen bag.", "tubes_bagged", spec.Bag),
+                D("pocket_slip", "Add the request slip", "Take the printed request slip and put it in the bag's outer pocket.", "slip_pocketed", spec.Printer),
+                D("seal_bag", "Seal the bag", "Press SEAL on the bag.", "bag_sealed", spec.Bag),
+                D("scan_bag", "Scan the bag", "Scan the bag barcode with the PDA and press Send to laboratory.", "dispatch_requested", spec.Bag),
+                D("send_tube", "Send by pneumatic tube", "Put the sealed bag into the pneumatic tube station.", "specimen_dispatched", spec.StationOpening),
+            }, CompositeStep.Order.InSequence);
+
             var order = Step<SubmitLabOrderStep>("lab_order", "Send the lab request",
                 "Open \"Lab Request\" on the PDA, select the tests the physician ordered and send.", StepRequirement.Mandatory, 20, HighlightStyle.Objective,
                 pda ? pda.gameObject : null);
@@ -154,7 +191,7 @@ namespace HSE.EditorTools
             checkMonitor.SetTarget(monitor, onSelect: true, onActivate: true, onHover: true);
 
             runner.Configure("Blood Collection and Lab Request",
-                new ScenarioStep[] { hygiene, grab, approach, scan, confirm, bp, blood, order, readBoard, checkMonitor }, // hand hygiene first, before going to the patient
+                new ScenarioStep[] { hygiene, grab, approach, scan, confirm, bp, blood, label, document, order, dispatch, readBoard, checkMonitor }, // hand hygiene first, before going to the patient
                 highlighter, autoPlay: false); // starts when a language is picked at the entrance
 
             var guide = new GameObject("Guide").AddComponent<ScenarioGuide>();
@@ -210,6 +247,80 @@ namespace HSE.EditorTools
 
             EditorUtility.SetDirty(root);
             Debug.Log("[HSE] Scenario set up with " + runner.Steps.Count + " steps.");
+        }
+
+        struct SpecimenKit { public GameObject Printer, Bag, StationOpening; }
+
+        static Material Mat(string name) => AssetDatabase.LoadAssetAtPath<Material>($"Assets/HSE/Materials/{name}.mat");
+
+        /// <summary>Label printer, specimen bag (seal + barcode) and the pneumatic tube station by the door.</summary>
+        static SpecimenKit SetupSpecimenHandling(Transform root)
+        {
+            var kit = new SpecimenKit();
+            var printerT = Find("LabelPrinter");
+            if (printerT)
+            {
+                var outlet = Child(printerT, "Outlet", new Vector3(0, 0.1f, 0.12f), Quaternion.identity);
+                printerT.gameObject.AddComponent<LabelPrinterDevice>().Configure(Mat("Sheet"), outlet);
+                kit.Printer = printerT.gameObject;
+            }
+
+            var bagT = Find("SpecimenBag");
+            var fill = Object.FindFirstObjectByType<TubeFilling>();
+            if (bagT)
+            {
+                var grab = MakeGrab(bagT);
+                // Seal strip, shown once tubes and slip are in.
+                var seal = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                seal.name = "SealButton";
+                seal.transform.SetParent(bagT, false);
+                seal.transform.localPosition = new Vector3(0, 0.5f, -0.45f);
+                seal.transform.localScale = new Vector3(0.9f, 2f, 0.12f);
+                seal.GetComponent<MeshRenderer>().sharedMaterial = Mat("Red");
+                var sealInteract = seal.AddComponent<XRSimpleInteractable>();
+                var poke = System.Type.GetType("UnityEngine.XR.Interaction.Toolkit.Filtering.XRPokeFilter, Unity.XR.Interaction.Toolkit");
+                if (poke != null) seal.AddComponent(poke);
+                var code = bagT.gameObject.AddComponent<ScannableCode>();
+                code.kind = CodeKind.SpecimenBag;
+                code.code = "SPEC-BAG-01";
+                bagT.gameObject.AddComponent<SpecimenBagDevice>().Configure(fill, sealInteract, code);
+                kit.Bag = bagT.gameObject;
+
+                // Pneumatic tube station on the west wall by the door; appears when the specimen is sent.
+                var station = new GameObject("PneumaticTubeStation").transform;
+                station.position = new Vector3(-2.93f, 0, -1.85f);
+                station.rotation = Quaternion.Euler(0, 90, 0);
+                Part(station, "Housing", PrimitiveType.Cube, new Vector3(0, 1.2f, 0.1f), new Vector3(0.36f, 0.6f, 0.2f), Mat("PlasticWhite"));
+                Part(station, "Pipe", PrimitiveType.Cylinder, new Vector3(0, 2.2f, 0.1f), new Vector3(0.12f, 0.7f, 0.12f), Mat("Glass"));
+                var cup = Part(station, "TubeOpening", PrimitiveType.Cylinder, new Vector3(0, 1.05f, 0.22f), new Vector3(0.16f, 0.04f, 0.16f), Mat("DarkMetal"));
+                Part(station, "ReadyLight", PrimitiveType.Sphere, new Vector3(0.12f, 1.42f, 0.205f), Vector3.one * 0.03f, Mat("EmissiveGreen"));
+                var text = new GameObject("Label").AddComponent<TMPro.TextMeshPro>();
+                text.transform.SetParent(station, false);
+                text.transform.localPosition = new Vector3(0, 1.38f, 0.203f);
+                text.transform.localRotation = Quaternion.Euler(0, 180, 0);
+                text.rectTransform.sizeDelta = new Vector2(0.3f, 0.08f);
+                text.text = "<b>PNEUMATIC TUBE</b>\nto Central Laboratory";
+                text.alignment = TMPro.TextAlignmentOptions.Center;
+                text.enableAutoSizing = true; text.fontSizeMin = 0.01f; text.fontSizeMax = 1f;
+                text.color = new Color(0.1f, 0.3f, 0.45f);
+                cup.AddComponent<ProximityTrigger>().Configure(grab, null, cup.transform, 0.16f, 0.3f, "specimen_dispatched", consume: true);
+                station.SetParent(root, true);
+                root.gameObject.AddComponent<ShowOnProcedureEvent>().Configure(station.gameObject, "dispatch_requested");
+                kit.StationOpening = cup;
+            }
+            return kit;
+        }
+
+        static GameObject Part(Transform parent, string name, PrimitiveType type, Vector3 pos, Vector3 scale, Material m)
+        {
+            var go = GameObject.CreatePrimitive(type);
+            go.name = name;
+            Object.DestroyImmediate(go.GetComponent<Collider>());
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = pos;
+            go.transform.localScale = scale;
+            if (m) go.GetComponent<MeshRenderer>().sharedMaterial = m;
+            return go;
         }
 
         struct DrawKit { public Transform Tourniquet, Swab, Holder, Rack, Sharps, Gauze; }
@@ -420,7 +531,7 @@ namespace HSE.EditorTools
             "BP_Cuff", "Tourniquet", "AlcoholSwab_0", "AlcoholSwab_1", "AlcoholSwab_2", "Gauze", "Plasters",
             "Tube_EDTA_Lavender", "Tube_SST_Gold", "Tube_Citrate_LightBlue", "Tube_Heparin_Green",
             "VacutainerHolder", "SharpsContainer", "SpecimenBag", "LabelPrinter", "ProcedureTray",
-            "VitalsMonitor", "CommsTerminal", "CareBoard", "ClinicalWasteBin", "NIBP_Start", "Tube_Fluoride_Gray", "TubeRack"
+            "VitalsMonitor", "CommsTerminal", "CareBoard", "ClinicalWasteBin", "NIBP_Start", "Tube_Fluoride_Gray", "TubeRack", "TubeOpening"
         };
 
         static void PrepareHighlights(GameObject pda, GameObject bed)

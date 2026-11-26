@@ -15,6 +15,7 @@ namespace HSE.Devices
         [SerializeField] float delay = 0.6f;
 
         XRGrabInteractable _grab;
+        Transform _homeParent;
         Vector3 _homePos;
         Quaternion _homeRot;
         float _returnAt = -1;
@@ -22,6 +23,7 @@ namespace HSE.Devices
         void Awake()
         {
             _grab = GetComponent<XRGrabInteractable>();
+            _homeParent = transform.parent;
             _homePos = transform.position;
             _homeRot = transform.rotation;
             _grab.selectExited.AddListener(_ => _returnAt = Time.time + delay);
@@ -41,8 +43,12 @@ namespace HSE.Devices
         /// <summary>Back to the start immediately (used when the next patient starts).</summary>
         public void SendHome()
         {
+            _grab.enabled = true;
+            enabled = true;
+            foreach (var c in GetComponentsInChildren<Collider>(true)) if (!c.isTrigger) c.enabled = true;
             if (_grab.isSelected && _grab.interactionManager)
                 _grab.interactionManager.CancelInteractableSelection((IXRSelectInteractable)_grab);
+            transform.SetParent(_homeParent, true);
             transform.SetPositionAndRotation(_homePos, _homeRot);
             _returnAt = -1;
         }
