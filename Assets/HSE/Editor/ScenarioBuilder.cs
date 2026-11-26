@@ -197,7 +197,7 @@ namespace HSE.EditorTools
             dispatch.SetChildren(new ScenarioStep[]
             {
                 D("bag_tubes", "Bag the tubes", "Put each labelled tube into the specimen bag.", "tubes_bagged", spec.Bag),
-                D("pocket_slip", "Add the request slip", "Take the printed request slip and put it in the bag's outer pocket.", "slip_pocketed", spec.Printer),
+                D("pocket_slip", "Add the request slip", "Take the one printed request slip from the label printer and bring it to the glowing specimen bag; it goes into the outer pocket.", "slip_pocketed", spec.Bag),
                 D("seal_bag", "Seal the bag", "Press SEAL on the bag.", "bag_sealed", spec.Bag),
                 D("scan_bag", "Scan the bag", "Scan the bag barcode with the PDA and press Send to laboratory.", "dispatch_requested", spec.Bag),
                 D("send_tube", "Send by pneumatic tube", "Put the sealed bag into the pneumatic tube station.", "specimen_dispatched", spec.StationOpening),

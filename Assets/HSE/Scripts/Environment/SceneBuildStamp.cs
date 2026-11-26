@@ -6,7 +6,7 @@ namespace HSE.Environment
     public class SceneBuildStamp : MonoBehaviour
     {
         /// <summary>Bump whenever the builders change what ends up in the scene.</summary>
-        public const int CurrentVersion = 15;
+        public const int CurrentVersion = 16;
 
         public int version;
     }

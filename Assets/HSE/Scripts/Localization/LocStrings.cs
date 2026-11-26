@@ -212,7 +212,7 @@ namespace HSE.Localization
             ["step.bag_tubes.instr"] = ("Put each labelled tube into the specimen bag.", "Her etiketli tüpü numune poşetine koy."),
             ["step.bag_tubes.cue"] = ("Tubes into the bag", "Tüpleri poşete"),
             ["step.pocket_slip.title"] = ("Add the request slip", "İstem fişini ekle"),
-            ["step.pocket_slip.instr"] = ("Take the printed request slip and put it in the bag's outer pocket.", "Yazdırılan istem fişini al ve poşetin dış cebine koy."),
+            ["step.pocket_slip.instr"] = ("Take the one printed request slip from the label printer and bring it to the glowing specimen bag; it goes into the outer pocket.", "Etiket yazıcısından çıkan tek istem fişini al ve parlayan numune poşetine götür; fiş dış cebe girer."),
             ["step.pocket_slip.cue"] = ("Slip into the outer pocket", "Fişi dış cebe"),
             ["step.seal_bag.title"] = ("Seal the bag", "Poşeti kapat"),
             ["step.seal_bag.instr"] = ("Press SEAL on the bag.", "Poşetteki SEAL şeridine bas."),
