@@ -140,13 +140,22 @@ namespace HSE.EditorTools
                 s.SetEvent(evt);
                 return s;
             }
+            // Lights the needed tubes one by one in the order of draw.
+            ProcedureStep FillTubes()
+            {
+                var s = ChildStep<FillTubesStep>(blood, "fill_tubes", "Fill the tubes",
+                    "Touch each glowing tube to the back of the holder until it fills with blood; the next one then lights up.",
+                    draw.Rack ? draw.Rack.gameObject : null);
+                s.SetEvent("tubes_complete");
+                return s;
+            }
             var drawSteps = new ScenarioStep[]
             {
                 consent,
                 P("apply_tourniquet", "Apply the tourniquet", "Put the tourniquet on the upper arm, above the elbow.", "tourniquet_on", draw.Tourniquet),
                 P("clean_site", "Clean the site", "Wipe the inside of the elbow with an alcohol swab and let it dry.", "site_cleaned", draw.Swab),
                 P("insert_needle", "Insert the needle", "Pick up the holder and touch the needle tip to the blue hologram on the inside of the elbow. The needle goes in by itself and stays in the vein.", "needle_in", draw.Holder),
-                P("fill_tubes", "Fill the tubes", "Touch each tube needed for the ordered tests to the back of the holder and hold it there until it fills with blood.", "tubes_complete", draw.Rack),
+                FillTubes(),
                 P("release_tourniquet", "Release the tourniquet", "Remove the tourniquet before taking the needle out.", "tourniquet_off", draw.Tourniquet),
                 P("withdraw_needle", "Withdraw the needle", "Grab the holder and pull the needle out of the arm.", "needle_out", draw.Holder),
                 P("dispose_needle", "Dispose of the needle", "Put the needle straight into the sharps container.", "needle_disposed", draw.Sharps),

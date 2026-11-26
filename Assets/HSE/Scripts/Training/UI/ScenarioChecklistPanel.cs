@@ -118,6 +118,12 @@ namespace HSE.Training.UI
             {
                 _nextSearch = Time.time + 1f;
                 TryAttach();
+                // Sub-tasks advance without runner events (e.g. the next tube); keep the instruction current.
+                if (runner && runner.IsRunning && _finished == null && _instruction)
+                {
+                    var text = InstructionText();
+                    if (text != _instruction.text) _instruction.text = text;
+                }
             }
             if (_expanded && Time.time >= _hideAt) Collapse();
             if (_toast && !string.IsNullOrEmpty(_toast.text) && Time.time > _toastUntil) _toast.text = "";
@@ -169,6 +175,22 @@ namespace HSE.Training.UI
         ScenarioReport _finished;
         string ScenarioTitle => runner ? Loc.TOr("scenario.title", runner.Title) : "";
 
+        /// <summary>The current step's title plus the instruction of the sub-task being done right now.</summary>
+        string InstructionText()
+        {
+            var current = runner ? runner.CurrentStep : null;
+            if (!current) return "";
+            var leaf = current;
+            while (leaf is CompositeStep c)
+            {
+                var active = c.Children.FirstOrDefault(x => x && x.State == StepState.Active);
+                if (!active) break;
+                leaf = active;
+            }
+            string detail = leaf == current ? StepText.Instruction(current) : $"<b>{StepText.Title(leaf)}:</b> {StepText.Instruction(leaf)}";
+            return $"<b>{StepText.Title(current)}</b>\n<size=80%>{detail}</size>";
+        }
+
         void Redraw()
         {
             if (!runner || runner.Report == null) return;
@@ -178,8 +200,7 @@ namespace HSE.Training.UI
             _header.text = $"<b>{ScenarioTitle}</b>  ·  {done}/{mandatory.Count}";
             _tabText.text = Loc.F("checklist.tab", done, mandatory.Count);
 
-            var current = runner.CurrentStep;
-            _instruction.text = current ? $"<b>{StepText.Title(current)}</b>\n<size=80%>{StepText.Instruction(current)}</size>" : "";
+            _instruction.text = InstructionText();
 
             var sb = new StringBuilder();
             for (int i = 0; i < mandatory.Count; i++) AppendLine(sb, mandatory[i], (i + 1) + ".");

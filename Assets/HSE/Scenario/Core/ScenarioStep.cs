@@ -102,6 +102,18 @@ namespace HSE.Scenario
             MistakeMade?.Invoke(this, message);
         }
 
+        /// <summary>
+        /// Swaps what the step points at while it runs (e.g. one sample tube after another).
+        /// The old targets go dark and the new ones light up straight away if the step is active.
+        /// </summary>
+        protected void SetHighlightTargets(IEnumerable<GameObject> targets)
+        {
+            bool active = State == StepState.Active;
+            if (active) SetGuidance(false);
+            highlightTargets = targets != null ? new List<GameObject>(targets) : new List<GameObject>();
+            if (active) SetGuidance(true);
+        }
+
         /// <summary>Lets composite steps forward their children's mistakes as their own.</summary>
         protected void ForwardMistake(ScenarioStep source, string message) => MistakeMade?.Invoke(source, message);
 
